@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import status, priority, score, result_status %}
+{% block title %}Compare answers{% endblock %}
+{% block content %}
+{% set q = examples[0] %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Compare answers</h1>
+    <p class="muted">One question, five answers. Run the metrics on all of them to see which metric catches which problem.</p>
+  </div>
+</div>
+
+{% if error %}
+  <div class="messages" role="alert"><div class="message message--error"><span class="message__icon" aria-hidden="true"></span><span>{{ error }}</span></div></div>
+{% endif %}
+
+<div class="grid-main">
+  <section class="card" aria-labelledby="setup-title">
+    <div class="card__head"><h2 id="setup-title">The question and the five answers</h2></div>
+    <div class="card__body stack-sm" style="gap:16px">
+      <dl class="kv">
+        <dt>Question</dt><dd>{{ q.question }}</dd>
+        <dt>Retrieved context</dt><dd>{{ q.retrieved_contexts|join(" ") }}</dd>
+        <dt>Reference answer</dt><dd>{{ q.reference_answer }}</dd>
+      </dl>
+      <ol class="answers">
+        {% for e in examples %}
+        <li><strong>{{ e.metadata.label }}</strong> “{{ e.generated_answer }}”
+          <div class="small muted">{{ e.metadata.case }}</div></li>
+        {% endfor %}
+      </ol>
+    </div>
+  </section>
+
+  <form method="post" action="/compare#matrix" class="card" data-busy-form>
+    <div class="card__head"><div><h2>Metrics to run</h2>
+      <p>LLM-judged metrics run once per answer: 5 answers × 4 metrics can take 10 minutes or more on this CPU.</p></div></div>
+    <div class="card__body stack-sm" style="gap:20px">
+      {% include "partials/metric_choices.html" %}
+    </div>
+    <div class="card__foot form-actions">
+      <button class="btn btn--primary" type="submit" data-busy-label="Scoring 5 answers…">Compare the 5 answers</button>
+      <span class="small muted busy-note" hidden aria-live="polite"></span>
+    </div>
+  </form>
+</div>
+
+{% if batch %}
+<section class="card" id="matrix" aria-labelledby="matrix-title">
+  <div class="card__head"><div><h2 id="matrix-title">Scores side by side</h2>
+    <p>{{ batch.passed }} of {{ batch.total }} answers pass. Each cell shows the score and whether it reached the threshold.</p></div></div>
+  {% if not llm_ran %}
+  <div class="callout-note" role="note">
+    <strong>No LLM-judged metric ran.</strong> Word and embedding metrics cannot check facts, so the hallucinated
+    and incomplete answers can still pass here. Tick Faithfulness, Correctness and Completeness to catch them.
+  </div>
+  {% endif %}
+  <div class="table-wrap"><table class="table matrix">
+    <caption class="visually-hidden">Scores of the five answers</caption>
+    <thead><tr>
+      <th scope="col">Answer</th>
+      {% for c in columns %}<th scope="col" class="num">{{ c.number }} {{ c.label }}<div class="small muted">pass at {{ thresholds[c.key] }}</div></th>{% endfor %}
+      <th scope="col">Result</th>
+    </tr></thead>
+    <tbody>
+    {% for row in matrix %}
+      <tr>
+        <th scope="row"><div class="cell-main"><span>{{ row.example.metadata.label }}</span><span class="small muted">“{{ row.example.generated_answer }}”</span></div></th>
+        {% for s in row.cells %}
+        <td class="num">
+          <div class="score-cell"><strong>{{ score(s.score) }}</strong>{{ result_status(s) }}</div>
+          {% if s.status != 'scored' %}<div class="small muted wrap">{{ s.error }}</div>{% endif %}
+        </td>
+        {% endfor %}
+        <td>{{ status({"pass": "pass", "fail": "failed", "incomplete": "weak"}[row.report.status], row.report.status|capitalize) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot><tr>
+      <th scope="row">Average</th>
+      {% for c in columns %}<td class="num"><strong>{{ score(batch.metric_averages[c.key]) }}</strong></td>{% endfor %}
+      <td></td>
+    </tr></tfoot>
+  </table></div>
+</section>
+
+<section class="card" aria-labelledby="read-title">
+  <div class="card__head"><h2 id="read-title">How to read it</h2></div>
+  <ul class="numbered card__body" style="list-style: disc">
+    <li><strong>Word-overlap metrics</strong> (Exact Match, BLEU, ROUGE) punish the paraphrase even though it is right. They compare words, not facts.</li>
+    <li><strong>Semantic Similarity</strong> rewards the paraphrase, but it also scores the hallucinated answer high: “20 casual and 15 sick” reads almost the same as “12 and 12”. Embeddings do not check numbers.</li>
+    <li><strong>Faithfulness and Correctness</strong> (LLM judge) are the metrics that catch the hallucinated answer. That is why they are critical in production.</li>
+    <li><strong>Completeness</strong> catches the incomplete answer; <strong>Relevancy</strong> catches the irrelevant one.</li>
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

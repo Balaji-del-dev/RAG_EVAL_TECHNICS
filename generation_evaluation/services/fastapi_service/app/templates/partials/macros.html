@@ -1,0 +1,15 @@
+{% macro status(code, label) -%}
+<span class="status status--{{ code }}"><span class="status__icon" aria-hidden="true">{% if code == 'pass' %}&#10003;{% elif code == 'failed' %}&#10005;{% elif code == 'weak' %}!{% elif code == 'error' %}?{% else %}&#8211;{% endif %}</span><span>{{ label }}</span></span>
+{%- endmacro %}
+
+{% macro priority(p) -%}
+<span class="tag tag--{{ p }}">{{ p|capitalize }}</span>
+{%- endmacro %}
+
+{% macro score(v) -%}
+{% if v is none %}—{% else %}{{ "%.3f"|format(v) }}{% endif %}
+{%- endmacro %}
+
+{% macro result_status(s) -%}
+{% if s.status == 'scored' %}{{ status('pass' if s.passed else 'failed', 'Pass' if s.passed else 'Fail') }}{% elif s.status == 'skipped' %}{{ status('pending', 'Skipped') }}{% else %}{{ status('error', 'Error') }}{% endif %}
+{%- endmacro %}

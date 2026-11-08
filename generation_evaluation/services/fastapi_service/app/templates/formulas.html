@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import priority %}
+{% block title %}Metrics & formulas{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Metrics &amp; formulas</h1>
+    <p class="muted">Goal: check that the LLM's answer is correct, relevant, complete and supported by the retrieved context.</p>
+  </div>
+</div>
+
+<div class="stack">
+  <section class="card" aria-labelledby="table-title">
+    <div class="card__head"><div><h2 id="table-title">The eight metrics</h2>
+      <p>What each checks, the problem it solves, its formula and the framework that scores it (default first).</p></div></div>
+    <div class="table-wrap"><table class="table formulas">
+      <caption class="visually-hidden">Generation metrics</caption>
+      <thead><tr><th scope="col">No.</th><th scope="col">Metric</th><th scope="col">What it checks</th><th scope="col">Problem it solves</th><th scope="col">Formula</th><th scope="col">Framework</th><th scope="col">Priority</th><th scope="col" class="num">Pass at</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="num">{{ r.m.number }}</td>
+          <th scope="row">{{ r.m.label }}</th>
+          <td>{{ r.m.checks }}</td>
+          <td>{{ r.m.problem }}</td>
+          <td><div class="formula">{{ r.m.formula }}</div><div class="small muted">{{ r.m.formula_explained }}</div></td>
+          <td>{{ r.frameworks }}{% if r.m.llm_judged %}<div class="small muted">default: {{ r.default }}</div>{% endif %}</td>
+          <td>{{ priority(r.m.priority) }}</td>
+          <td class="num">{{ r.threshold }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <div class="card__foot">Formulas 11–14 are the simple ratio. The frameworks compute them with an LLM judge: RAGAS splits the answer into claims, generates reverse questions (relevancy) and combines factual F1 with similarity (correctness); DeepEval counts yes/no verdicts and uses G-Eval steps.</div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="confuse-title">
+      <div class="card__head"><div><h2 id="confuse-title">Don't confuse these metrics</h2>
+        <p>Question: “How many casual and sick leaves?”</p></div></div>
+      <div class="table-wrap"><table class="table table--compact">
+        <caption class="visually-hidden">Which metric reacts to which kind of answer</caption>
+        <thead><tr><th scope="col">Answer</th><th scope="col">Faithful</th><th scope="col">Relevant</th><th scope="col">Correct</th><th scope="col">Complete</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">“12 casual and 12 sick” <div class="small muted">correct and complete</div></th><td>High</td><td>High</td><td>High</td><td>High</td></tr>
+          <tr><th scope="row">“12 casual leaves” <div class="small muted">correct, incomplete</div></th><td>High</td><td>High</td><td>High</td><td>Low</td></tr>
+          <tr><th scope="row">“20 casual and 15 sick” <div class="small muted">hallucinated</div></th><td>Low</td><td>High</td><td>Low</td><td>Depends</td></tr>
+          <tr><th scope="row">“You can work from home” <div class="small muted">irrelevant</div></th><td>Depends</td><td>Low</td><td>Depends</td><td>Low</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section class="card" aria-labelledby="priority-title">
+      <div class="card__head"><h2 id="priority-title">Which matter most in production</h2></div>
+      <ul class="list-plain card__body">
+        <li class="rule">{{ priority('critical') }}<div><strong>Faithfulness, Answer Relevancy, Answer Correctness</strong><div class="small muted">Stop hallucinations, off-topic and wrong answers. They decide pass/fail.</div></div></li>
+        <li class="rule">{{ priority('high') }}<div><strong>Answer Completeness, Semantic Similarity</strong><div class="small muted">Catch missing details and check meaning. They also decide pass/fail.</div></div></li>
+        <li class="rule">{{ priority('low') }}<div><strong>Exact Match, BLEU, ROUGE</strong><div class="small muted">Word-overlap scores: useful for comparing text, too strict for natural answers. Shown, but never fail an answer on their own.</div></div></li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="tree-title">
+    <div class="card__head"><div><h2 id="tree-title">Production tree</h2><p>The same view as <code>generation-eval tree</code> and <a href="/tree">/tree</a>.</p></div></div>
+    <div class="card__body"><pre class="code tree">{{ tree }}</pre></div>
+  </section>
+</div>
+{% endblock %}

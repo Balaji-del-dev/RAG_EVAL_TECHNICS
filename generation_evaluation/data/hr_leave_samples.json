@@ -1,0 +1,95 @@
+{
+  "description": "HR leave policy: one question, five answers. Each answer shows a different case from the design's 'Don't confuse these metrics' table.",
+  "samples": [
+    {
+      "sample_id": "hr-01-correct-complete",
+      "question": "How many casual leaves and sick leaves do employees receive per year?",
+      "retrieved_contexts": [
+        "Employees receive 12 casual leaves per year. Employees receive 12 sick leaves per year.",
+        "Employees must get manager approval before taking planned leave."
+      ],
+      "reference_answer": "Employees receive 12 casual leaves and 12 sick leaves per year.",
+      "required_facts": [
+        "Casual leave is 12 days per year",
+        "Sick leave is 12 days per year"
+      ],
+      "generated_answer": "Employees receive 12 casual leaves and 12 sick leaves per year.",
+      "metadata": {
+        "label": "Correct & complete",
+        "case": "Correct and complete: every metric high"
+      }
+    },
+    {
+      "sample_id": "hr-02-paraphrase",
+      "question": "How many casual leaves and sick leaves do employees receive per year?",
+      "retrieved_contexts": [
+        "Employees receive 12 casual leaves per year. Employees receive 12 sick leaves per year.",
+        "Employees must get manager approval before taking planned leave."
+      ],
+      "reference_answer": "Employees receive 12 casual leaves and 12 sick leaves per year.",
+      "required_facts": [
+        "Casual leave is 12 days per year",
+        "Sick leave is 12 days per year"
+      ],
+      "generated_answer": "Each employee gets 12 days of casual leave and 12 days of sick leave annually.",
+      "metadata": {
+        "label": "Paraphrase",
+        "case": "Same meaning, different words: semantic similarity high, Exact Match 0, BLEU low"
+      }
+    },
+    {
+      "sample_id": "hr-03-incomplete",
+      "question": "How many casual leaves and sick leaves do employees receive per year?",
+      "retrieved_contexts": [
+        "Employees receive 12 casual leaves per year. Employees receive 12 sick leaves per year.",
+        "Employees must get manager approval before taking planned leave."
+      ],
+      "reference_answer": "Employees receive 12 casual leaves and 12 sick leaves per year.",
+      "required_facts": [
+        "Casual leave is 12 days per year",
+        "Sick leave is 12 days per year"
+      ],
+      "generated_answer": "Employees receive 12 casual leaves.",
+      "metadata": {
+        "label": "Incomplete",
+        "case": "Correct but incomplete: faithfulness high, completeness low"
+      }
+    },
+    {
+      "sample_id": "hr-04-hallucinated",
+      "question": "How many casual leaves and sick leaves do employees receive per year?",
+      "retrieved_contexts": [
+        "Employees receive 12 casual leaves per year. Employees receive 12 sick leaves per year.",
+        "Employees must get manager approval before taking planned leave."
+      ],
+      "reference_answer": "Employees receive 12 casual leaves and 12 sick leaves per year.",
+      "required_facts": [
+        "Casual leave is 12 days per year",
+        "Sick leave is 12 days per year"
+      ],
+      "generated_answer": "Employees receive 20 casual leaves and 15 sick leaves per year.",
+      "metadata": {
+        "label": "Hallucinated",
+        "case": "Relevant but wrong: relevancy high, faithfulness and correctness low"
+      }
+    },
+    {
+      "sample_id": "hr-05-irrelevant",
+      "question": "How many casual leaves and sick leaves do employees receive per year?",
+      "retrieved_contexts": [
+        "Employees receive 12 casual leaves per year. Employees receive 12 sick leaves per year.",
+        "Employees must get manager approval before taking planned leave."
+      ],
+      "reference_answer": "Employees receive 12 casual leaves and 12 sick leaves per year.",
+      "required_facts": [
+        "Casual leave is 12 days per year",
+        "Sick leave is 12 days per year"
+      ],
+      "generated_answer": "Employees can apply for work from home.",
+      "metadata": {
+        "label": "Irrelevant",
+        "case": "Unrelated to the question: relevancy and completeness low"
+      }
+    }
+  ]
+}

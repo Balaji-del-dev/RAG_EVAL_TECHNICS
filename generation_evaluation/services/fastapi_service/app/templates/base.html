@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Generation Evaluation{% endblock %} · Generation Evaluation</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/generation.css') }}">
+  <script src="{{ url_for('static', path='js/app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="/">
+        <span class="brand__mark brand__mark--generation" aria-hidden="true"></span>
+        <span>Generation Evaluation</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/" {% if page == 'evaluate' %}aria-current="page"{% endif %}>Evaluate</a>
+        <a href="/compare" {% if page == 'compare' %}aria-current="page"{% endif %}>Compare answers</a>
+        <a href="/formulas" {% if page == 'formulas' %}aria-current="page"{% endif %}>Metrics &amp; formulas</a>
+        <a href="/docs">API</a>
+      </nav>
+      <a class="btn btn--sm" href="{{ retrieval_url }}">Retrieval evaluation</a>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    Generation evaluation · RAGAS + DeepEval + Sentence Transformers + SacreBLEU + rouge-score · FastAPI · Langfuse
+  </footer>
+</body>
+</html>

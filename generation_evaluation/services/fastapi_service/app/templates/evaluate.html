@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import status, priority, score, result_status %}
+{% block title %}Evaluate an answer{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Evaluate an answer</h1>
+    <p class="muted">Check whether the LLM's answer is grounded in the context, answers the question, is correct and is complete. Pick an example or type your own.</p>
+  </div>
+</div>
+
+<nav class="filters example-row" aria-label="Examples">
+  <span class="small muted">Examples:</span>
+  {% for e in examples %}
+    <a class="filter" href="/?example={{ e.sample_id }}" {% if e.sample_id == values.example_id %}aria-current="true"{% endif %}>{{ loop.index }}. {{ e.metadata.label }}</a>
+  {% endfor %}
+</nav>
+
+{% if error %}
+  <div class="messages" role="alert"><div class="message message--error"><span class="message__icon" aria-hidden="true"></span><span>{{ error }}</span></div></div>
+{% endif %}
+
+<form method="post" action="/#results" class="card" data-busy-form>
+  <input type="hidden" name="example_id" value="{{ values.example_id }}">
+  <input type="hidden" name="case" value="{{ values.case }}">
+  <div class="card__head">
+    <div><h2>The answer to check</h2>
+      {% if values.case %}<p>Example: {{ values.case }}</p>{% else %}<p>Your own answer.</p>{% endif %}</div>
+  </div>
+  <div class="card__body eval-form">
+    <div class="stack-sm" style="gap:16px">
+      <div class="field">
+        <label for="question">Question</label>
+        <textarea id="question" name="question" rows="2" required>{{ values.question }}</textarea>
+      </div>
+      <div class="field">
+        <label for="contexts">Retrieved context</label>
+        <textarea id="contexts" name="contexts" rows="4">{{ values.contexts }}</textarea>
+        <span class="field__help">The chunks the retriever found. Put a blank line between chunks. Needed for Faithfulness.</span>
+      </div>
+      <div class="field">
+        <label for="reference">Reference answer</label>
+        <textarea id="reference" name="reference" rows="2">{{ values.reference }}</textarea>
+        <span class="field__help">The expected answer. Needed for Correctness, Completeness, Similarity, Exact Match, BLEU and ROUGE.</span>
+      </div>
+      <div class="field">
+        <label for="facts">Required facts <span class="muted">(optional)</span></label>
+        <textarea id="facts" name="facts" rows="2">{{ values.facts }}</textarea>
+        <span class="field__help">One per line. Completeness checks each one.</span>
+      </div>
+      <div class="field field--answer">
+        <label for="answer">Generated answer <span class="muted">(this is what gets scored)</span></label>
+        <textarea id="answer" name="answer" rows="3" required>{{ values.answer }}</textarea>
+      </div>
+    </div>
+
+    <div class="stack-sm" style="gap:20px">
+      {% include "partials/metric_choices.html" %}
+      <label class="checkbox">
+        <input type="checkbox" name="track" {% if track %}checked{% endif %} {% if not tracking_available %}disabled{% endif %}>
+        Send scores to Langfuse
+      </label>
+      {% if not tracking_available %}<p class="small muted">Langfuse is off: add LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY to .env.</p>{% endif %}
+    </div>
+  </div>
+  <div class="card__foot form-actions">
+    <button class="btn btn--primary" type="submit" data-busy-label="Scoring… the LLM judge can take a few minutes">Evaluate answer</button>
+    <span class="small muted busy-note" hidden aria-live="polite"></span>
+  </div>
+</form>
+
+{% if report %}
+<section id="results" class="stack results" aria-labelledby="results-title">
+  <h2 id="results-title" class="visually-hidden">Results</h2>
+
+  <div class="card verdict verdict--{{ report.status }}">
+    <span class="verdict__icon" aria-hidden="true">{% if report.status == 'pass' %}&#10003;{% elif report.status == 'fail' %}&#10005;{% else %}!{% endif %}</span>
+    <div class="verdict__text">
+      <strong class="verdict__title">{{ {"pass": "Pass", "fail": "Fail", "incomplete": "Incomplete"}[report.status] }}</strong>
+      <span>
+        {% if report.status == 'pass' %}Every deciding metric (critical and high priority) passed.
+        {% elif report.status == 'fail' %}Failed on: {% for m in rows if m.s.metric in report.failed_metrics %}{{ m.s.label }}{% if not loop.last %}, {% endif %}{% endfor %}.
+        {% else %}No deciding metric failed, but some could not be scored (see below).{% endif %}
+      </span>
+      {% if not_checked %}<span class="small">Not checked: {{ not_checked|join(", ") }}. The verdict covers only the metrics that ran.</span>{% endif %}
+    </div>
+    <dl class="verdict__facts">
+      <div><dt>Overall score</dt><dd>{{ score(report.overall_score) }}</dd></div>
+      <div><dt>Time</dt><dd>{{ "%.1f"|format(report.seconds) }} s</dd></div>
+      <div><dt>Langfuse</dt><dd>{% if report.trace_url %}<a href="{{ report.trace_url }}">Open trace</a>{% else %}{{ report.tracking }}{% endif %}</dd></div>
+    </dl>
+  </div>
+
+  <div class="tiles tiles--4">
+    {% for r in rows %}
+    <div class="tile">
+      <span class="tile__label">{{ r.s.number }} · {{ r.s.label }}</span>
+      <span class="tile__value">{{ score(r.s.score) }}</span>
+      {{ result_status(r.s) }}
+      <div class="tile__meter tile__meter--threshold" aria-hidden="true">
+        <span style="width: {{ r.meter }}%"></span><i style="left: {{ r.threshold_pct }}%"></i>
+      </div>
+      <span class="tile__sub">{{ r.framework }} · pass at {{ r.s.threshold }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="small muted">The bar shows the score; the tick marks the pass threshold.</p>
+
+  <section class="card" aria-labelledby="working-title">
+    <div class="card__head"><div><h2 id="working-title">How each score was calculated</h2>
+      <p>Critical and high metrics decide pass/fail. Exact Match, BLEU and ROUGE compare words, not facts, so they are shown but do not fail an answer.</p></div></div>
+    <div class="table-wrap"><table class="table working">
+      <caption class="visually-hidden">Scores with formula and working</caption>
+      <thead><tr><th scope="col">Metric</th><th scope="col">Framework</th><th scope="col">Formula and working</th><th scope="col" class="num">Score</th><th scope="col" class="num">Pass at</th><th scope="col">Result</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <th scope="row"><div class="cell-main"><span>{{ r.s.number }} {{ r.s.label }}</span><span>{{ priority(r.s.priority) }}</span></div></th>
+          <td>{{ r.framework }}{% if r.s.framework_version and r.s.framework_version != 'python' %}<div class="small muted">{{ r.s.framework_version }}</div>{% endif %}</td>
+          <td>
+            <div class="formula">{{ r.s.formula }}</div>
+            {% if r.s.status == 'scored' %}<div>{{ r.s.explanation }}</div>{% else %}<div class="muted">{{ r.s.error }}</div>{% endif %}
+            {% if r.facts or r.details_json %}
+            <details class="disclosure small">
+              <summary>Details</summary>
+              {% if r.facts %}
+              <ul class="facts">
+                {% for f in r.facts %}<li>{{ status('pass' if f.provided else 'failed', 'Provided' if f.provided else 'Missing') }} {{ f.detail }}</li>{% endfor %}
+              </ul>
+              {% endif %}
+              {% if r.details_json %}<pre class="code">{{ r.details_json }}</pre>{% endif %}
+            </details>
+            {% endif %}
+          </td>
+          <td class="num"><strong>{{ score(r.s.score) }}</strong></td>
+          <td class="num">{{ r.s.threshold }}</td>
+          <td>{{ result_status(r.s) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+</section>
+{% endif %}
+{% endblock %}

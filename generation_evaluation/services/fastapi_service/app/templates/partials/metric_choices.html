@@ -1,0 +1,35 @@
+{% from "partials/macros.html" import priority %}
+<fieldset class="choice-group">
+  <legend>LLM-judged metrics <span class="muted">(11–14)</span></legend>
+  <p class="small muted">
+    Judge model <strong>{{ machine.judge_model }}</strong> via Ollama.
+    {% if not machine.ollama.reachable %}
+      <span class="warn-text">Ollama is not reachable, so these will show an error.</span>
+    {% elif machine.free_mb is not none %}
+      Free memory {{ "%.1f"|format(machine.free_mb / 1024) }} GB{% if not machine.llm_ok %}:
+      <span class="warn-text">the judge needs about {{ "%.1f"|format(machine.needed_mb / 1024) }} GB. Close some apps before ticking these.</span>{% else %}.{% endif %}
+    {% endif %}
+    Each takes about 20–90 s on this CPU.
+  </p>
+  {% for o in options.llm %}
+  <div class="metric-choice">
+    <input type="checkbox" id="m-{{ o.spec.key }}" name="metrics" value="{{ o.spec.key }}" {% if o.checked %}checked{% endif %}>
+    <label for="m-{{ o.spec.key }}"><span class="metric-choice__name"><span class="metric-choice__no">{{ o.spec.number }}</span>&nbsp;{{ o.spec.label }}</span> {{ priority(o.spec.priority) }}</label>
+    <label class="visually-hidden" for="e-{{ o.spec.key }}">Framework for {{ o.spec.label }}</label>
+    <select id="e-{{ o.spec.key }}" name="engine_{{ o.spec.key }}">
+      {% for value, name in o.engines %}<option value="{{ value }}" {% if value == o.engine %}selected{% endif %}>{{ name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endfor %}
+</fieldset>
+
+<fieldset class="choice-group">
+  <legend>Fast metrics <span class="muted">(15–18, no LLM)</span></legend>
+  {% for o in options.fast %}
+  <div class="metric-choice">
+    <input type="checkbox" id="m-{{ o.spec.key }}" name="metrics" value="{{ o.spec.key }}" {% if o.checked %}checked{% endif %}>
+    <label for="m-{{ o.spec.key }}"><span class="metric-choice__name"><span class="metric-choice__no">{{ o.spec.number }}</span>&nbsp;{{ o.spec.label }}</span> {{ priority(o.spec.priority) }}</label>
+    <span class="metric-choice__fw">{{ {"sentence-transformers": "Sentence Transformers", "python": "Python", "sacrebleu": "SacreBLEU", "rouge-score": "rouge-score"}[o.engine] }}</span>
+  </div>
+  {% endfor %}
+</fieldset>

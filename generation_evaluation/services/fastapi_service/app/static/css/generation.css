@@ -1,0 +1,92 @@
+/* Generation Evaluation pages. Builds on app.css (tokens, cards, tiles, tables, status badges). */
+
+.brand__mark--generation { background: var(--series-2); }
+.page-head__text p { max-width: 760px; }
+.example-row { margin-bottom: 16px; }
+.warn-text { color: var(--critical-ink); font-weight: 500; }
+
+/* ---- Evaluate form ---- */
+.eval-form { display: grid; grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr); gap: 32px; align-items: start; }
+.field--answer textarea { border-color: var(--series-1); box-shadow: inset 3px 0 0 var(--series-1); }
+.choice-group { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.choice-group legend { font-size: 12px; font-weight: 600; padding: 0; margin-bottom: 4px; }
+.metric-choice {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 12px; align-items: center;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+}
+.metric-choice:has(input:checked) { border-color: var(--series-1); box-shadow: inset 0 0 0 1px var(--series-1); }
+.metric-choice label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.metric-choice select { width: auto; max-width: 132px; height: 32px; padding: 0 28px 0 8px; font-size: 12px; }
+.metric-choice__name { min-width: 0; }
+.metric-choice__no { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; font-weight: 600; }
+.metric-choice__fw { font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+/* ---- Priority tags (text + tint; the word carries the meaning) ---- */
+.tag--critical { background: var(--critical-wash); color: var(--critical-ink); }
+.tag--high { background: var(--warning-wash); color: var(--ink); }
+.tag--low { background: var(--surface-2); color: var(--ink-2); }
+
+/* ---- Results ---- */
+.results { margin-top: 24px; scroll-margin-top: 72px; }
+.verdict { display: flex; align-items: center; gap: 16px; padding: 20px 24px; border-left: 4px solid var(--muted); flex-wrap: wrap; }
+.verdict--pass { border-left-color: var(--good); background: var(--good-wash); }
+.verdict--fail { border-left-color: var(--critical); background: var(--critical-wash); }
+.verdict--incomplete { border-left-color: var(--warning); background: var(--warning-wash); }
+.verdict__icon {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font-size: 20px; font-weight: 700; color: #fff; background: var(--muted);
+}
+.verdict--pass .verdict__icon { background: var(--good); }
+.verdict--fail .verdict__icon { background: var(--critical); }
+.verdict--incomplete .verdict__icon { background: var(--warning); color: #0b0b0b; }
+.verdict__text { display: grid; gap: 2px; flex: 1; min-width: 240px; }
+.verdict__title { font-size: 20px; line-height: 28px; }
+.verdict__facts { display: flex; gap: 24px; margin: 0; flex-wrap: wrap; }
+.verdict__facts div { display: grid; gap: 2px; }
+.verdict__facts dt { font-size: 12px; color: var(--ink-2); }
+.verdict__facts dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.verdict__facts a { text-decoration: underline; }
+
+.tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.tile .status { margin-top: 2px; }
+.tile__meter--threshold { position: relative; overflow: visible; }
+.tile__meter--threshold i {
+  position: absolute; top: -3px; width: 2px; height: 10px; margin-left: -1px;
+  background: var(--ink); border-radius: 1px;
+}
+
+.table.working td, .table.working th { vertical-align: top; }
+.table.working .formula { margin-bottom: 4px; }
+.table .cell-main .tag { justify-self: start; }
+.facts { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
+.facts li { display: flex; gap: 8px; align-items: center; }
+details.disclosure { margin-top: 8px; }
+details.disclosure pre.code { margin-top: 8px; max-height: 280px; overflow: auto; font-size: 12px; }
+
+/* ---- Compare ---- */
+.answers { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.matrix th, .matrix td { vertical-align: top; }
+.matrix thead th { white-space: normal; min-width: 96px; }
+.matrix tfoot th, .matrix tfoot td { border-top: 1px solid var(--border-strong); border-bottom: 0; }
+.matrix tfoot th { background: none; color: var(--ink); font-size: 14px; font-weight: 600; }
+.callout-note {
+  margin: 16px 24px 0; padding: 12px 16px; border-left: 3px solid var(--warning);
+  background: var(--warning-wash); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.score-cell { display: grid; gap: 4px; justify-items: end; }
+.wrap { white-space: normal; max-width: 160px; margin-left: auto; }
+
+/* ---- Formulas ---- */
+.formula { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.table.formulas td, .table.formulas th { vertical-align: top; }
+pre.tree { margin: 0; font-size: 12px; line-height: 18px; overflow-x: auto; }
+
+@media (max-width: 1024px) {
+  .eval-form { grid-template-columns: minmax(0, 1fr); }
+  .tiles--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .metric-choice { grid-template-columns: auto minmax(0, 1fr); }
+  .metric-choice select, .metric-choice__fw { grid-column: 2; justify-self: start; }
+  .verdict__facts { gap: 16px; }
+}
