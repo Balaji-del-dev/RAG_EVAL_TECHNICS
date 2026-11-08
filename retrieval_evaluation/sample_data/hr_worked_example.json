@@ -1,0 +1,57 @@
+{
+  "name": "HR Worked Example",
+  "version": "1.0",
+  "description": "The worked example from the design: one query, three relevant chunks (C101 grade 3, C102 grade 2, C103 grade 1). Run it with the uploaded results file worked_example_results.json to reproduce Precision@5 40%, Recall@5 66.7%, F1 50%, Hit Rate@5 100%, MRR 0.50 and NDCG@5 0.608.",
+  "chunks": [
+    {
+      "chunk_id": "C101",
+      "title": "Maternity leave eligibility",
+      "text": "Maternity leave policy: female employees are eligible for maternity leave once they have worked for the company for at least 80 days in the 12 months before the expected date of delivery. Eligibility covers permanent and fixed-term employees."
+    },
+    {
+      "chunk_id": "C102",
+      "title": "Maternity leave duration",
+      "text": "Eligible employees receive 26 weeks of paid maternity leave for each of their first two children. Up to 8 weeks of maternity leave can be taken before the expected delivery date. From the third child, maternity leave is 12 weeks."
+    },
+    {
+      "chunk_id": "C103",
+      "title": "Maternity leave application process",
+      "text": "To apply for maternity leave, submit a maternity leave request in the HR portal at least 8 weeks before the planned start date and attach a medical certificate showing the expected delivery date. The request is approved by your reporting manager and HR."
+    },
+    {
+      "chunk_id": "C104",
+      "title": "Paternity leave",
+      "text": "Paternity leave policy: male employees can take 5 working days of paid paternity leave within three months of the birth of their child. Paternity leave is separate from maternity leave and is applied for through the leave policy in the HR portal."
+    },
+    {
+      "chunk_id": "C105",
+      "title": "Work from home",
+      "text": "Work from home policy: employees may work from home up to two days a week with their manager's approval. The policy does not apply during probation, and employees must stay reachable during core hours from 11:00 to 16:00."
+    },
+    {
+      "chunk_id": "C106",
+      "title": "Employee insurance",
+      "text": "All employees, their spouse and up to two children are covered by group health insurance with a sum insured of 5 lakh. The policy also covers maternity hospitalisation expenses up to 50,000 per delivery."
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "Q1",
+      "text": "What is the maternity leave policy?",
+      "ground_truth": [
+        {
+          "chunk_id": "C101",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C102",
+          "grade": 2
+        },
+        {
+          "chunk_id": "C103",
+          "grade": 1
+        }
+      ]
+    }
+  ]
+}

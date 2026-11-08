@@ -1,0 +1,137 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}Compare experiments{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Experiment comparison</h1>
+    <p class="muted">Compare a candidate retriever with a baseline. Only queries both runs evaluated are counted, so the averages compare like with like.</p>
+  </div>
+</div>
+
+<div class="stack">
+  <section class="card" aria-labelledby="pick-title">
+    <div class="card__head"><h2 id="pick-title">Runs to compare</h2></div>
+    {% if has_runs %}
+      <form class="card__body" method="get" novalidate>
+        {% include "retrieval_evaluation/partials/_form_errors.html" %}
+        <div class="fields fields--3" style="grid-template-columns: minmax(0,2fr) minmax(0,2fr) minmax(0,1fr)">
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.baseline %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.candidate %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.tolerance %}
+        </div>
+        <div class="form-actions" style="margin-top:16px"><button class="btn btn--primary" type="submit">Compare</button></div>
+      </form>
+    {% else %}
+      <div class="empty"><p>You need at least two completed runs. Run the same dataset with two retriever configurations.</p>
+        <a class="btn btn--primary btn--sm" href="{% url 'retrieval_evaluation:evaluation_create' %}">New evaluation</a></div>
+    {% endif %}
+  </section>
+
+  {% if comparison %}
+    {% for warning in comparison.warnings %}
+      <div class="message message--warning"><span class="message__icon" aria-hidden="true"></span><span>{{ warning }}</span></div>
+    {% endfor %}
+
+    {% if comparison.metrics %}
+    {% with counts=comparison.query_counts %}
+    <div class="summary-strip">
+      <div class="tile"><span class="tile__label">Verdict</span>
+        <span class="tile__value" style="font-size:16px;line-height:32px">
+          {% if comparison.verdict == "regression" %}{% include "retrieval_evaluation/partials/_status.html" with code="failed" label="Regression" %}
+          {% elif comparison.verdict == "mixed" %}{% include "retrieval_evaluation/partials/_status.html" with code="weak" label="Mixed: some metrics regressed" %}
+          {% elif comparison.verdict == "improvement" %}{% include "retrieval_evaluation/partials/_status.html" with code="pass" label="Improvement" %}
+          {% else %}{% include "retrieval_evaluation/partials/_status.html" with code="pending" label="No change" %}{% endif %}
+        </span>
+        <span class="tile__sub">Tolerance ±{{ comparison.tolerance|metric_value:"decimal" }} on each average</span></div>
+      <div class="tile"><span class="tile__label">Queries compared</span><span class="tile__value">{{ comparison.common_count }}</span><span class="tile__sub">evaluated in both runs</span></div>
+      <div class="tile"><span class="tile__label">Queries improved</span><span class="tile__value">{{ counts.improved }}</span><span class="tile__sub">NDCG rose by more than the tolerance</span></div>
+      <div class="tile"><span class="tile__label">Queries regressed</span><span class="tile__value">{{ counts.regressed }}</span><span class="tile__sub">NDCG fell by more than the tolerance</span></div>
+    </div>
+    {% endwith %}
+
+    <div class="grid-2">
+      <section class="card" aria-labelledby="chart-title">
+        <div class="card__head"><div><h2 id="chart-title">Baseline vs candidate</h2><p>Averages on a 0-100% scale. Hover a row for both values.</p></div></div>
+        <div class="card__body stack-sm" style="gap:16px">
+          <div class="legend">
+            <span class="legend__item"><span class="legend__swatch legend__swatch--deemph"></span>Baseline #{{ comparison.baseline.pk }} {{ comparison.baseline.name }}</span>
+            <span class="legend__item"><span class="legend__swatch"></span>Candidate #{{ comparison.candidate.pk }} {{ comparison.candidate.name }}</span>
+          </div>
+          <div class="barchart barchart--paired" role="img" aria-label="Paired bars of the six metric averages for the baseline and candidate runs; values are in the table.">
+            {% for m in chart %}
+              <div class="barchart__row" tabindex="0" data-tip-title="{{ m.label }}"
+                   data-tip-rows='[{"value": "{{ m.candidate|metric_value:m.display }}", "label": "Candidate #{{ comparison.candidate.pk }}"}, {"value": "{{ m.baseline|metric_value:m.display }}", "label": "Baseline #{{ comparison.baseline.pk }}", "deemph": true}]'
+                   data-tip-note="Change {{ m.delta|signed_delta:m.display }}">
+                <span class="barchart__label">{{ m.label }}</span>
+                <div class="barchart__plot">
+                  <span class="bar bar--thin bar--deemph bar--a" style="width: {{ m.baseline|bar_width }}%"></span>
+                  <span class="bar bar--thin bar--b" style="width: {{ m.candidate|bar_width }}%"></span>
+                  <span class="bar__value" style="left: {{ m.candidate|bar_width }}%">{{ m.candidate|metric_value:"percent-compact" }}</span>
+                </div>
+              </div>
+            {% endfor %}
+            <div class="barchart__axis" aria-hidden="true"><span></span>
+              <div class="barchart__ticks"><span style="left:0">0%</span><span style="left:25%">25%</span><span style="left:50%">50%</span><span style="left:75%">75%</span><span style="left:100%">100%</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="table-title">
+        <div class="card__head"><h2 id="table-title">Metric averages</h2></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Metric</th><th class="num">Baseline #{{ comparison.baseline.pk }}</th><th class="num">Candidate #{{ comparison.candidate.pk }}</th><th class="num">Change</th></tr></thead>
+            <tbody>
+              {% for m in comparison.metrics %}
+                <tr>
+                  <td>{{ m.label }}</td>
+                  <td class="num">{{ m.baseline|metric_value:m.display }}</td>
+                  <td class="num">{{ m.candidate|metric_value:m.display }}</td>
+                  <td class="num delta--{{ m.verdict }}">{% if m.verdict == "improved" %}▲ {% elif m.verdict == "regressed" %}▼ {% endif %}{{ m.delta|signed_delta:m.display }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card__foot">
+          <a href="{{ comparison.baseline.get_absolute_url }}">#{{ comparison.baseline.pk }} {{ comparison.baseline.name }}</a> ({{ comparison.baseline.get_retriever_type_display }}, K = {{ comparison.baseline.top_k }})
+          vs <a href="{{ comparison.candidate.get_absolute_url }}">#{{ comparison.candidate.pk }} {{ comparison.candidate.name }}</a> ({{ comparison.candidate.get_retriever_type_display }}, K = {{ comparison.candidate.top_k }})
+        </div>
+      </section>
+    </div>
+
+    <section class="card" aria-labelledby="per-query-title">
+      <div class="card__head"><div><h2 id="per-query-title">Per-query changes</h2><p>Largest NDCG drops first. A query regresses when its NDCG falls by more than the tolerance.</p></div></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Query</th><th>Change</th><th class="num">NDCG baseline</th><th class="num">NDCG candidate</th><th class="num">Δ NDCG</th><th class="num">Δ Recall</th><th class="num">Δ MRR</th></tr></thead>
+          <tbody>
+            {% for q in comparison.queries %}
+              <tr>
+                <td><div class="cell-main"><span><span class="mono">{{ q.query_id }}</span> {{ q.query_text|truncatechars:70 }}</span>
+                  <span class="small"><a href="{% url 'retrieval_evaluation:result_detail' comparison.baseline.pk q.baseline_result_id %}">baseline</a> · <a href="{% url 'retrieval_evaluation:result_detail' comparison.candidate.pk q.candidate_result_id %}">candidate</a></span></div></td>
+                <td>
+                  {% if q.verdict == "regressed" %}{% include "retrieval_evaluation/partials/_status.html" with code="failed" label="Regressed" %}
+                  {% elif q.verdict == "improved" %}{% include "retrieval_evaluation/partials/_status.html" with code="pass" label="Improved" %}
+                  {% else %}<span class="small muted">Unchanged</span>{% endif %}
+                  {% if q.lost_hit %}<div class="small low">Lost every relevant chunk</div>{% elif q.gained_hit %}<div class="small muted">Now finds a relevant chunk</div>{% endif %}
+                </td>
+                <td class="num">{{ q.baseline.ndcg|metric_value:"decimal" }}</td>
+                <td class="num">{{ q.candidate.ndcg|metric_value:"decimal" }}</td>
+                {% with d=q.deltas %}
+                  <td class="num delta--{{ q.verdict }}">{{ d.ndcg|signed_delta:"decimal" }}</td>
+                  <td class="num">{{ d.recall|signed_delta:"percent" }}</td>
+                  <td class="num">{{ d.mrr|signed_delta:"decimal" }}</td>
+                {% endwith %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

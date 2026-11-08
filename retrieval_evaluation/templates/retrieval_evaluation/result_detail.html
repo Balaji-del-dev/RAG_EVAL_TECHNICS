@@ -1,0 +1,148 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}{{ result.query_external_id }} · run #{{ run.pk }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="{% url 'retrieval_evaluation:run_list' %}">Runs</a><span aria-hidden="true">/</span>
+      <a href="{{ run.get_absolute_url }}">#{{ run.pk }} {{ run.name }}</a><span aria-hidden="true">/</span><span>{{ result.query_external_id }}</span>
+    </nav>
+    <div class="row"><h1>{{ result.query_text }}</h1>{% include "retrieval_evaluation/partials/_status.html" with code=status %}</div>
+    <div class="meta">
+      <span>Query <strong class="mono">{{ result.query_external_id }}</strong></span>
+      <span>K = <strong>{{ run.top_k }}</strong></span>
+      <span><strong>{{ result.total_relevant }}</strong> relevant chunk{{ result.total_relevant|pluralize }} expected</span>
+      <span>Retriever returned <strong>{{ result.retrieved_count }}</strong></span>
+      {% if result.latency_ms is not None %}<span>Latency <strong>{{ result.latency_ms|ms }}</strong></span>{% endif %}
+    </div>
+  </div>
+  <div class="page-head__actions">
+    {% if prev_pk %}<a class="btn" href="{% url 'retrieval_evaluation:result_detail' run.pk prev_pk %}">Previous</a>{% endif %}
+    <span class="small muted nowrap" style="align-self:center">{{ position }} of {{ total }}</span>
+    {% if next_pk %}<a class="btn" href="{% url 'retrieval_evaluation:result_detail' run.pk next_pk %}">Next</a>{% endif %}
+  </div>
+</div>
+
+{% if result.error %}
+  <section class="card"><div class="card__body"><div class="message message--error"><span class="message__icon" aria-hidden="true"></span><span>{{ result.error }}</span></div></div></section>
+{% else %}
+<div class="stack">
+  {% if issues %}
+    <section class="card" aria-labelledby="issues-title">
+      <div class="card__head"><h2 id="issues-title">Why this query needs attention</h2></div>
+      <ul class="list-plain card__body">
+        {% for issue in issues %}
+          <li class="row"><span class="chip chip--strong">{{ issue.metric }}</span><strong>{{ issue.label }}</strong><span class="muted">{{ issue.explanation }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+  {% for warning in result.warnings %}
+    <div class="message message--warning"><span class="message__icon" aria-hidden="true"></span><span>{{ warning }}</span></div>
+  {% endfor %}
+
+  <div class="tiles tiles--compact" style="grid-template-columns: repeat(3, minmax(0,1fr))">
+    <div class="tile"><span class="tile__label">Relevant found</span><span class="tile__value">{{ result.relevant_found }}</span><span class="tile__sub">in the top {{ run.top_k }}</span></div>
+    <div class="tile"><span class="tile__label">Irrelevant found</span><span class="tile__value">{{ result.irrelevant_found }}</span><span class="tile__sub">in the top {{ run.top_k }}</span></div>
+    <div class="tile"><span class="tile__label">Relevant missed</span><span class="tile__value">{{ result.relevant_missed }}</span><span class="tile__sub">{% if result.missed_chunk_ids %}{{ result.missed_chunk_ids|join:", " }}{% else %}none{% endif %}</span></div>
+  </div>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="ranked-title">
+      <div class="card__head"><div><h2 id="ranked-title">Retriever output</h2><p>Ranked chunk IDs as returned, matched with the ground truth.</p></div></div>
+      <ol class="ranklist">
+        {% for item in retrieved %}
+          {% if item.row.rank == run.top_k|add:1 %}<li class="cutoff">Top {{ run.top_k }} cut-off · ranks below are not scored</li>{% endif %}
+          <li class="rank{% if item.row.is_relevant %} rank--relevant{% endif %}{% if not item.row.within_k %} rank--outside{% endif %}">
+            <span class="rank__no" aria-label="Rank {{ item.row.rank }}">{{ item.row.rank }}</span>
+            <div class="rank__body">
+              <span><span class="mono">{{ item.row.chunk_id }}</span>{% if item.chunk %} <span class="rank__title">{{ item.chunk.title }}</span>{% endif %}</span>
+              {% if item.chunk.text %}<span class="rank__text">{{ item.chunk.text|truncatechars:150 }}</span>{% endif %}
+            </div>
+            <div class="rank__side">
+              {% if item.row.is_relevant %}<span class="tag tag--relevant">Relevant</span>{% include "retrieval_evaluation/partials/_grade.html" with grade=item.row.grade %}
+              {% else %}<span class="tag tag--irrelevant">Not relevant</span>{% endif %}
+              {% if item.row.score is not None %}<span class="small muted num">score {{ item.row.score|floatformat:3 }}</span>{% endif %}
+            </div>
+          </li>
+        {% empty %}
+          <li class="empty">The retriever returned no chunks for this query.</li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section class="card" aria-labelledby="expected-title">
+      <div class="card__head"><div><h2 id="expected-title">Ground truth</h2><p>Expected chunks, as labelled when this run was scored.</p></div></div>
+      <ol class="ranklist">
+        {% for row in expected_rows %}
+          <li class="rank rank--plain">
+            <div class="rank__body">
+              <span><span class="mono">{{ row.chunk_id }}</span>{% if row.chunk %} <span class="rank__title">{{ row.chunk.title }}</span>{% endif %}</span>
+              {% include "retrieval_evaluation/partials/_grade.html" with grade=row.grade long=True %}
+            </div>
+            <div class="rank__side">
+              {% if row.grade == 0 %}<span class="tag tag--irrelevant">Labelled not relevant</span>
+              {% elif row.found %}<span class="tag tag--found">Found at rank {{ row.rank }}</span>
+              {% elif row.rank %}<span class="tag tag--missed">Rank {{ row.rank }}, outside top {{ run.top_k }}</span>
+              {% else %}<span class="tag tag--missed">Missed</span>{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="calc-title">
+    <div class="card__head"><div><h2 id="calc-title">How the six metrics were calculated</h2>
+      <p>Recomputed from the stored ranking and ground truth, so you can check every number.</p></div></div>
+    <div class="card__body">
+      <div class="calc-grid">
+        {% for m in metrics %}
+          <div class="calc">
+            <div class="calc__head"><span class="calc__name">{{ m|metric_label:run.top_k }}</span><span class="chip">{{ m.relevance }}</span></div>
+            <span class="calc__value">{% with value=explanation.scores.as_metric_dict|get_item:m.key %}{% if m.display == "percent" %}{{ value|metric_value:"percent-compact" }}{% else %}{{ value|metric_value:"decimal" }}{% endif %}{% endwith %}</span>
+            <span class="calc__formula">{{ m.formula }}</span>
+            <span class="calc__step">{{ explanation.steps|get_item:m.key }}</span>
+            {% if m.key == "precision" and precision_ceiling < 1 %}<span class="small muted">Best possible for this query at K = {{ run.top_k }}: {{ precision_ceiling|metric_value:"percent-compact" }} (only {{ result.total_relevant }} relevant chunk{{ result.total_relevant|pluralize }} exist).</span>{% endif %}
+            {% if m.key == "recall" and recall_ceiling < 1 %}<span class="small muted">Best possible at K = {{ run.top_k }}: {{ recall_ceiling|metric_value:"percent-compact" }} (more relevant chunks than K).</span>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="dcg-title">
+    <div class="card__head"><div><h2 id="dcg-title">NDCG@{{ run.top_k }} step by step</h2>
+      <p>gain = {{ explanation.gain_text }}, discount = log<sub>2</sub>(rank + 1), contribution = gain / discount.</p></div></div>
+    <div class="grid-2" style="gap:0">
+      <div class="table-wrap">
+        <table class="table table--compact">
+          <caption class="visually-hidden">Actual ranking</caption>
+          <thead><tr><th>Actual rank</th><th>Chunk</th><th class="num">Grade</th><th class="num">Gain</th><th class="num">Discount</th><th class="num">Contribution</th></tr></thead>
+          <tbody>
+            {% for t in explanation.dcg_terms %}
+              <tr><td class="num" style="text-align:left">{{ t.rank }}</td><td class="mono">{{ t.chunk_id }}</td><td class="num">{{ t.grade }}</td><td class="num">{{ t.gain|floatformat:0 }}</td><td class="num">{{ t.discount|floatformat:3 }}</td><td class="num">{{ t.contribution|floatformat:3 }}</td></tr>
+            {% endfor %}
+            <tr><td colspan="5"><strong>DCG@{{ run.top_k }}</strong></td><td class="num"><strong>{{ explanation.dcg|floatformat:3 }}</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap" style="border-left:1px solid var(--border)">
+        <table class="table table--compact">
+          <caption class="visually-hidden">Ideal ranking</caption>
+          <thead><tr><th>Ideal rank</th><th>Chunk</th><th class="num">Grade</th><th class="num">Gain</th><th class="num">Discount</th><th class="num">Contribution</th></tr></thead>
+          <tbody>
+            {% for t in explanation.ideal_terms %}
+              <tr><td class="num" style="text-align:left">{{ t.rank }}</td><td class="mono">{{ t.chunk_id }}</td><td class="num">{{ t.grade }}</td><td class="num">{{ t.gain|floatformat:0 }}</td><td class="num">{{ t.discount|floatformat:3 }}</td><td class="num">{{ t.contribution|floatformat:3 }}</td></tr>
+            {% endfor %}
+            <tr><td colspan="5"><strong>Ideal DCG@{{ run.top_k }}</strong></td><td class="num"><strong>{{ explanation.idcg|floatformat:3 }}</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card__foot">NDCG@{{ run.top_k }} = {{ explanation.dcg|floatformat:3 }} / {{ explanation.idcg|floatformat:3 }} = <strong>{{ explanation.scores.ndcg|floatformat:3 }}</strong></div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% block title %}Datasets{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Evaluation datasets</h1>
+    <p class="muted">Test questions, the chunk IDs that should be retrieved for each, and how relevant each chunk is (grade 0-3).</p>
+  </div>
+  <div class="page-head__actions">
+    <form method="post" action="{% url 'retrieval_evaluation:load_sample' %}">{% csrf_token %}
+      <button class="btn" type="submit">Load sample datasets</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid-main">
+  <section class="card" aria-labelledby="list-title">
+    <div class="card__head"><h2 id="list-title">Datasets</h2><span class="small muted">{{ datasets|length }} total</span></div>
+    {% if datasets %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Dataset</th><th class="num">Queries</th><th class="num">Chunks</th><th class="num">Runs</th><th>Created</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+          <tbody>
+            {% for ds in datasets %}
+              <tr>
+                <td><div class="cell-main"><a href="{{ ds.get_absolute_url }}">{{ ds.name }} <span class="muted">v{{ ds.version }}</span></a>
+                  {% if ds.description %}<span class="small muted">{{ ds.description|truncatechars:110 }}</span>{% endif %}</div></td>
+                <td class="num">{{ ds.query_total }}</td>
+                <td class="num">{{ ds.chunk_total|default:"—" }}</td>
+                <td class="num">{{ ds.run_total }}</td>
+                <td class="nowrap small muted">{{ ds.created_at|date:"j M Y" }}</td>
+                <td class="nowrap"><a class="btn btn--sm" href="{% url 'retrieval_evaluation:evaluation_create' %}?dataset={{ ds.pk }}">Evaluate</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <h2>No datasets yet</h2>
+        <p>Upload one on the right, or load the sample datasets.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="upload-title">
+    <div class="card__head"><div><h2 id="upload-title">Upload a dataset</h2><p>JSON or CSV, up to 10 MB.</p></div></div>
+    <form class="card__body form" method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      {% include "retrieval_evaluation/partials/_form_errors.html" %}
+      {% include "retrieval_evaluation/partials/_field.html" with field=form.file %}
+      {% include "retrieval_evaluation/partials/_field.html" with field=form.name %}
+      {% include "retrieval_evaluation/partials/_field.html" with field=form.version %}
+      {% include "retrieval_evaluation/partials/_field.html" with field=form.description %}
+      <div class="form-actions"><button class="btn btn--primary" type="submit">Import dataset</button></div>
+      <details class="disclosure">
+        <summary>File formats</summary>
+        <div class="stack-sm" style="margin-top:12px">
+          <p class="small muted">JSON, with an optional chunk corpus for the built-in retrievers:</p>
+<pre class="code">{
+  "name": "HR Policy Evaluation",
+  "version": "1.0",
+  "chunks": [
+    {"chunk_id": "C101", "title": "Maternity eligibility",
+     "text": "..."}
+  ],
+  "queries": [
+    {"query_id": "Q1",
+     "text": "What is the maternity leave policy?",
+     "ground_truth": [
+       {"chunk_id": "C101", "grade": 3},
+       {"chunk_id": "C102", "grade": 2}]}
+  ]
+}</pre>
+          <p class="small muted">CSV, one row per ground-truth label:</p>
+<pre class="code">query_id,query,chunk_id,grade
+Q1,What is the maternity leave policy?,C101,3
+Q1,What is the maternity leave policy?,C102,2</pre>
+          <p class="small muted">Grades: 3 highly relevant, 2 relevant, 1 somewhat relevant, 0 not relevant. Every query needs at least one chunk with grade 1 or higher.</p>
+        </div>
+      </details>
+    </form>
+  </section>
+</div>
+{% endblock %}

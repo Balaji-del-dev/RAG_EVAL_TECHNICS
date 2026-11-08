@@ -1,0 +1,127 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}Run #{{ run.pk }} {{ run.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="{% url 'retrieval_evaluation:run_list' %}">Runs</a><span aria-hidden="true">/</span><span>#{{ run.pk }}</span></nav>
+    <div class="row"><h1>Evaluation run #{{ run.pk }} · {{ run.name }}</h1>{% include "retrieval_evaluation/partials/_status.html" with code=run.status label=run.get_status_display %}</div>
+    <div class="meta">
+      <span>Dataset <strong><a href="{{ run.dataset.get_absolute_url }}">{{ run.dataset }}</a></strong></span>
+      <span>Retriever <strong>{{ run.get_retriever_type_display }}</strong> ({{ run.retriever_summary }})</span>
+      <span>K = <strong>{{ run.top_k }}</strong></span>
+      <span>NDCG gain <strong>{{ run.ndcg_gain }}</strong></span>
+      <span>{{ run.created_at|date:"j M Y, H:i" }}</span>
+      {% if run.duration_ms is not None %}<span>Took <strong>{{ run.duration_ms|ms }}</strong></span>{% endif %}
+    </div>
+    {% if run.notes %}<p class="small muted">{{ run.notes }}</p>{% endif %}
+  </div>
+  <div class="page-head__actions">
+    {% if run.is_completed %}
+      <a class="btn btn--sm" href="{% url 'retrieval_evaluation:comparison' %}?candidate={{ run.pk }}{% if previous_run %}&baseline={{ previous_run.pk }}{% endif %}">Compare</a>
+      <a class="btn btn--sm" href="{% url 'retrieval_evaluation:run_export' run.pk 'csv' %}" download>Export CSV</a>
+      <a class="btn btn--sm" href="{% url 'retrieval_evaluation:run_export' run.pk 'json' %}" download>Export JSON</a>
+    {% endif %}
+    <form method="post" action="{% url 'retrieval_evaluation:run_rerun' run.pk %}" data-busy-label="Running…">{% csrf_token %}<button class="btn btn--sm" type="submit">Re-run</button></form>
+    <form method="post" action="{% url 'retrieval_evaluation:run_delete' run.pk %}" data-confirm="Delete run #{{ run.pk }} and its results?">{% csrf_token %}<button class="btn btn--sm btn--danger" type="submit">Delete</button></form>
+  </div>
+</div>
+
+{% if run.status == "failed" %}
+  <section class="card"><div class="card__body"><div class="message message--error"><span class="message__icon" aria-hidden="true"></span><span>{{ run.error_message }}</span></div></div></section>
+{% elif run.is_completed %}
+<div class="stack">
+  <section class="stack-sm" aria-labelledby="scores-title">
+    <div class="row row--between">
+      <h2 id="scores-title">Average scores over {{ run.evaluated_count }} quer{{ run.evaluated_count|pluralize:"y,ies" }}</h2>
+      <div class="row">
+        {% if run.error_count %}<span class="small muted">{{ run.error_count }} not evaluated (see Error below)</span>{% endif %}
+        <a class="btn btn--sm btn--primary" href="{% url 'retrieval_evaluation:run_explain' run.pk %}">Explain these scores</a>
+      </div>
+    </div>
+    {% include "retrieval_evaluation/partials/_metric_tiles.html" with cards=cards %}
+  </section>
+
+  <div class="grid-main">
+    <section class="card" aria-labelledby="flow-title">
+      <div class="card__head"><div><h2 id="flow-title">Metric calculation flow</h2>
+        <p>All six on one 0-100% scale. MRR and NDCG are shown as percentages here.</p></div></div>
+      <div class="card__body">
+        {% include "retrieval_evaluation/partials/_metric_bars.html" with cards=cards note="mean over evaluated queries" %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="failure-title">
+      <div class="card__head"><div><h2 id="failure-title">Failure analysis</h2><p>Which metric reveals which problem.</p></div></div>
+      <div class="table-wrap">
+        <table class="table table--compact">
+          <thead><tr><th>Issue</th><th>Detected by</th><th class="num">Queries</th></tr></thead>
+          <tbody>
+            {% for row in summary.issue_rows %}
+              <tr>
+                <td>{% if row.count %}<a href="?issue={{ row.issue.code }}#queries">{{ row.issue.label }}</a>{% else %}{{ row.issue.label }}{% endif %}
+                  <div class="small muted">{{ row.issue.explanation }}</div></td>
+                <td class="nowrap">{{ row.issue.metric }}</td>
+                <td class="num">{{ row.count }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card__foot">
+        Flags when Precision is under {{ summary.thresholds.precision_vs_ceiling|metric_value:"percent-compact" }} or Recall under {{ summary.thresholds.recall_vs_ceiling|metric_value:"percent-compact" }} of what the query can reach at K, MRR under {{ summary.thresholds.mrr|floatformat:2 }}, or NDCG under {{ summary.thresholds.ndcg|floatformat:2 }}. Set in <span class="mono">settings.RETRIEVAL_EVAL</span>.
+      </div>
+    </section>
+  </div>
+
+  <section class="card" id="queries" aria-labelledby="queries-title">
+    <div class="card__head">
+      <div><h2 id="queries-title">Query-level results</h2><p>Open a query to see its ranked chunks and how each score was calculated.</p></div>
+      <div class="filters" aria-label="Filter queries">
+        <a class="filter" href="?#queries" {% if not status_filter and not issue_filter %}aria-current="true"{% endif %}>All <span class="count">{{ result_total }}</span></a>
+        {% for code, count in summary.status_counts.items %}{% if count %}
+          <a class="filter" href="?status={{ code }}#queries" {% if status_filter == code %}aria-current="true"{% endif %}>{{ status_labels|get_item:code }} <span class="count">{{ count }}</span></a>
+        {% endif %}{% endfor %}
+        {% if issue_filter %}<span class="chip chip--strong">{{ issue_filter|issue_label }} <a href="?#queries" aria-label="Clear issue filter">✕</a></span>{% endif %}
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>
+          <th>Query</th><th>Status</th>
+          {% for m in metrics %}<th class="num">{{ m|metric_label:run.top_k }}</th>{% endfor %}
+          <th class="num">First relevant</th><th>Missed</th>
+        </tr></thead>
+        <tbody>
+          {% for r in results %}
+            <tr>
+              <td><div class="cell-main"><a href="{{ r.get_absolute_url }}"><span class="mono">{{ r.query_external_id }}</span> {{ r.query_text|truncatechars:70 }}</a>
+                {% if r.issues %}<div class="chips">{% for code in r.issues %}<span class="chip">{{ code|issue_label }}</span>{% endfor %}</div>{% endif %}
+                {% if r.error %}<span class="small low">{{ r.error|truncatechars:120 }}</span>{% endif %}</div></td>
+              <td>{% include "retrieval_evaluation/partials/_status.html" with code=r.status %}</td>
+              {% if r.error %}
+                <td colspan="6" class="small muted">Not scored</td><td class="num">—</td><td>—</td>
+              {% else %}
+                <td class="num">{{ r.precision|metric_value:"percent" }}</td>
+                <td class="num">{{ r.recall|metric_value:"percent" }}</td>
+                <td class="num">{{ r.f1|metric_value:"percent" }}</td>
+                <td class="num">{{ r.hit_rate|metric_value:"percent-compact" }}</td>
+                <td class="num">{{ r.reciprocal_rank|metric_value:"decimal" }}</td>
+                <td class="num">{{ r.ndcg|metric_value:"decimal" }}</td>
+                <td class="num">{{ r.first_relevant_rank|default:"—" }}</td>
+                <td>{% if r.missed_chunk_ids %}<div class="chips">{% for cid in r.missed_chunk_ids %}<span class="chip mono">{{ cid }}</span>{% endfor %}</div>{% else %}<span class="muted">—</span>{% endif %}</td>
+              {% endif %}
+            </tr>
+          {% empty %}
+            <tr><td colspan="10"><div class="empty">No queries match this filter.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card__foot">MRR column shows each query's reciprocal rank; the MRR tile above is their mean.</div>
+  </section>
+</div>
+{% else %}
+  <section class="card"><div class="empty"><p>This run has not finished.</p></div></section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}Runs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Evaluation runs</h1>
+    <p class="muted">Experiment history: each run is one retriever configuration scored on one dataset at one K.</p>
+  </div>
+  <div class="page-head__actions">
+    <a class="btn" href="{% url 'retrieval_evaluation:comparison' %}">Compare runs</a>
+    <a class="btn btn--primary" href="{% url 'retrieval_evaluation:evaluation_create' %}{% if dataset %}?dataset={{ dataset.pk }}{% endif %}">New evaluation</a>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card__head">
+    <div class="filters" aria-label="Filter by dataset">
+      <a class="filter" href="{% url 'retrieval_evaluation:run_list' %}" {% if not dataset %}aria-current="true"{% endif %}>All datasets</a>
+      {% for ds in datasets %}
+        <a class="filter" href="?dataset={{ ds.pk }}" {% if dataset.pk == ds.pk %}aria-current="true"{% endif %}>{{ ds.name }} v{{ ds.version }}</a>
+      {% endfor %}
+    </div>
+    <span class="small muted nowrap">{{ runs|length }} run{{ runs|length|pluralize }}</span>
+  </div>
+  {% if runs %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>
+          <th>Run</th><th>Retriever</th><th class="num">K</th>
+          {% for m in metrics %}<th class="num">{{ m.name }}</th>{% endfor %}
+          <th>Status</th><th>Created</th>
+        </tr></thead>
+        <tbody>
+          {% for run in runs %}
+            <tr>
+              <td><div class="cell-main"><a href="{{ run.get_absolute_url }}">#{{ run.pk }} {{ run.name }}</a><span class="small muted">{{ run.dataset }}</span></div></td>
+              <td><div class="cell-main" style="min-width:160px"><span>{{ run.get_retriever_type_display }}</span><span class="small muted">{{ run.retriever_summary|truncatechars:60 }}</span></div></td>
+              <td class="num">{{ run.top_k }}</td>
+              <td class="num">{{ run.avg_precision|metric_value:"percent" }}</td>
+              <td class="num">{{ run.avg_recall|metric_value:"percent" }}</td>
+              <td class="num">{{ run.avg_f1|metric_value:"percent" }}</td>
+              <td class="num">{{ run.avg_hit_rate|metric_value:"percent" }}</td>
+              <td class="num">{{ run.mrr|metric_value:"decimal" }}</td>
+              <td class="num">{{ run.avg_ndcg|metric_value:"decimal" }}</td>
+              <td>{% include "retrieval_evaluation/partials/_status.html" with code=run.status label=run.get_status_display %}</td>
+              <td class="nowrap small muted">{{ run.created_at|date:"j M Y, H:i" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty"><h2>No runs yet</h2><p>Create an evaluation to score a retriever.</p>
+      <a class="btn btn--primary btn--sm" href="{% url 'retrieval_evaluation:evaluation_create' %}">New evaluation</a></div>
+  {% endif %}
+</section>
+{% endblock %}

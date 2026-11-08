@@ -1,0 +1,27 @@
+{
+  "name": "HR Leave Policy Example",
+  "version": "1.0",
+  "description": "Three HR leave questions for learning the six metrics. Run it with the uploaded results file leave_example_results.json: Q1 (annual leave) gives Precision@5 40%, Recall@5 66.7%, F1 50% and NDCG@5 0.704; over the three questions Hit Rate@5 is 2/3 and MRR is (1 + 0.5 + 0) / 3 = 0.50. Q3 (maternity leave) gets five wrong chunks, to show what a complete retrieval failure looks like.",
+  "chunks": [
+    {"chunk_id": "D1", "title": "Annual leave entitlement", "text": "Employees receive 20 annual leave days each calendar year. Annual leave is paid at the normal salary rate."},
+    {"chunk_id": "D2", "title": "Annual leave approval", "text": "Annual leave requires manager approval. Submit the annual leave request in the HR portal at least one week before the first day of leave."},
+    {"chunk_id": "D3", "title": "Annual leave carry-forward", "text": "Unused annual leave can be carried forward to the next year, up to a maximum of 10 days. Days above the limit lapse on 31 March."},
+    {"chunk_id": "D4", "title": "Salary details", "text": "Salaries are paid on the last working day of each month. The payslip shows basic pay, allowances and tax deductions."},
+    {"chunk_id": "D5", "title": "Attendance policy", "text": "Employees mark attendance in the HR portal every working day. Three late arrivals in a month count as half a day of absence."},
+    {"chunk_id": "D6", "title": "Employee benefits", "text": "Employee benefits include meal vouchers, a gym membership and a yearly learning budget for courses and books."},
+    {"chunk_id": "D7", "title": "Medical insurance", "text": "Group medical insurance covers employees, their spouse and two children for hospital expenses up to 5 lakh a year."},
+    {"chunk_id": "D8", "title": "Office working hours", "text": "Office working hours are 9:30 to 18:00, Monday to Friday, with a one-hour lunch break."},
+    {"chunk_id": "D9", "title": "Sick leave entitlement", "text": "Employees get 12 days of paid sick leave per year. Sick leave cannot be carried forward."},
+    {"chunk_id": "D10", "title": "Sick leave certificate", "text": "Sick leave of more than two days in a row needs a medical certificate from a registered doctor."},
+    {"chunk_id": "D11", "title": "Maternity leave duration", "text": "Eligible employees receive 26 weeks of paid maternity leave for each of their first two children."},
+    {"chunk_id": "D12", "title": "Maternity leave eligibility", "text": "Maternity leave is available to employees who have worked for at least 80 days in the 12 months before the expected delivery date."}
+  ],
+  "queries": [
+    {"query_id": "Q1", "text": "What is the company's annual leave policy?",
+     "ground_truth": [{"chunk_id": "D1", "grade": 2}, {"chunk_id": "D2", "grade": 2}, {"chunk_id": "D3", "grade": 2}]},
+    {"query_id": "Q2", "text": "What is the sick leave policy?",
+     "ground_truth": [{"chunk_id": "D9", "grade": 2}, {"chunk_id": "D10", "grade": 2}]},
+    {"query_id": "Q3", "text": "What is the maternity leave policy?",
+     "ground_truth": [{"chunk_id": "D11", "grade": 2}, {"chunk_id": "D12", "grade": 2}]}
+  ]
+}

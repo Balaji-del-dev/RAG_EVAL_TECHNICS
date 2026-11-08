@@ -1,0 +1,90 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}{{ query.query_id }} · {{ dataset.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="{% url 'retrieval_evaluation:dataset_list' %}">Datasets</a><span aria-hidden="true">/</span>
+      <a href="{{ dataset.get_absolute_url }}">{{ dataset }}</a><span aria-hidden="true">/</span><span>{{ query.query_id }}</span>
+    </nav>
+    <h1>{{ query.text }}</h1>
+    <p class="muted small">Query ID <span class="mono">{{ query.query_id }}</span>. Changes apply to new runs; past runs keep the ground truth they were scored with.</p>
+  </div>
+  <div class="page-head__actions">
+    <form method="post" action="{% url 'retrieval_evaluation:query_delete' dataset.pk query.pk %}" data-confirm="Delete query {{ query.query_id }}? Past runs keep their scores for it.">{% csrf_token %}
+      <button class="btn btn--danger" type="submit">Delete query</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid-main">
+  <section class="card" aria-labelledby="gt-title">
+    <div class="card__head"><div><h2 id="gt-title">Ground truth</h2><p>Grade 1 or higher counts as relevant for Precision, Recall, F1, Hit Rate and MRR. NDCG uses the grade.</p></div></div>
+    {% if not has_relevant %}
+      <div class="card__body" style="padding-bottom:0"><div class="message message--warning"><span class="message__icon" aria-hidden="true"></span><span>This query has no relevant chunk yet, so it cannot be scored. Add a label with grade 1-3.</span></div></div>
+    {% endif %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Chunk</th><th>Grade</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td><div class="cell-main"><span class="mono">{{ row.label.chunk_id }}</span>
+                {% if row.chunk %}<span>{{ row.chunk.title }}</span><span class="small muted">{{ row.chunk.text|truncatechars:160 }}</span>
+                {% else %}<span class="small muted">Not in this dataset's chunk corpus</span>{% endif %}</div></td>
+              <td>{% include "retrieval_evaluation/partials/_grade.html" with grade=row.label.grade long=True %}</td>
+              <td class="nowrap">
+                <form method="post" class="inline" data-confirm="Remove {{ row.label.chunk_id }} from the ground truth?">{% csrf_token %}
+                  <input type="hidden" name="action" value="delete_label"><input type="hidden" name="label_id" value="{{ row.label.pk }}">
+                  <button class="btn btn--sm btn--danger" type="submit">Remove</button>
+                </form>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="3"><div class="empty">No labels yet.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="stack">
+    <section class="card" aria-labelledby="label-title">
+      <div class="card__head"><div><h2 id="label-title">Add or regrade a chunk</h2><p>Saving an existing chunk ID changes its grade.</p></div></div>
+      <form class="card__body form" method="post" novalidate>{% csrf_token %}
+        <input type="hidden" name="action" value="save_label">
+        {% include "retrieval_evaluation/partials/_field.html" with field=label_form.chunk_id %}
+        {% include "retrieval_evaluation/partials/_field.html" with field=label_form.grade %}
+        <div class="form-actions"><button class="btn btn--primary" type="submit">Save label</button></div>
+      </form>
+      {% if chunk_options %}
+        <datalist id="chunk-options">{% for cid, title in chunk_options %}<option value="{{ cid }}">{{ title }}</option>{% endfor %}</datalist>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="edit-title">
+      <div class="card__head"><h2 id="edit-title">Edit the question</h2></div>
+      <form class="card__body form" method="post" novalidate>{% csrf_token %}
+        <input type="hidden" name="action" value="edit_query">
+        {% include "retrieval_evaluation/partials/_field.html" with field=edit_form.text %}
+        <div class="form-actions"><button class="btn" type="submit">Save question</button></div>
+      </form>
+    </section>
+
+    {% if recent_results %}
+      <section class="card" aria-labelledby="recent-title">
+        <div class="card__head"><h2 id="recent-title">Scores in recent runs</h2></div>
+        <ul class="list-plain card__body">
+          {% for r in recent_results %}
+            <li class="row row--between">
+              <a href="{{ r.get_absolute_url }}">#{{ r.run.pk }} {{ r.run.name }}</a>
+              <span class="small num">{% if r.error %}error{% else %}NDCG {{ r.ndcg|metric_value:"decimal" }}{% endif %}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

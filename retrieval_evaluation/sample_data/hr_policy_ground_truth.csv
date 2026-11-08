@@ -1,0 +1,25 @@
+query_id,query,chunk_id,grade
+Q1,What is the maternity leave policy?,C101,3
+Q1,What is the maternity leave policy?,C102,2
+Q1,What is the maternity leave policy?,C103,1
+Q2,How many days of sick leave do I get?,C108,3
+Q3,Can I carry forward unused annual leave?,C109,3
+Q3,Can I carry forward unused annual leave?,C107,1
+Q4,How do I apply for leave?,C110,3
+Q4,How do I apply for leave?,C103,1
+Q5,What is the notice period after resignation?,C111,3
+Q5,What is the notice period after resignation?,C112,2
+Q6,How do I claim reimbursement for travel expenses?,C115,3
+Q6,How do I claim reimbursement for travel expenses?,C116,2
+Q7,How do I make a health insurance claim?,C119,3
+Q7,How do I make a health insurance claim?,C106,1
+Q8,Can I work from home?,C105,3
+Q8,Can I work from home?,C120,1
+Q9,How long is the probation period?,C113,3
+Q9,How long is the probation period?,C111,1
+Q10,How do I report harassment at work?,C125,3
+Q11,Do new fathers get time off when a baby is born?,C104,3
+Q12,How often do I have to change my password?,C118,3
+Q13,When are performance appraisals done?,C114,3
+Q14,Do I get extra pay for working on a holiday?,C122,3
+Q14,Do I get extra pay for working on a holiday?,C121,1

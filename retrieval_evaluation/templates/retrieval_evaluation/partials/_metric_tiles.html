@@ -1,0 +1,11 @@
+{% load eval_tags %}
+<div class="tiles">
+  {% for card in cards %}
+    <div class="tile">
+      <span class="tile__label">{{ card.label }}</span>
+      <span class="tile__value">{% if card.metric.display == "percent" %}{{ card.value|metric_value:"percent-compact" }}{% else %}{{ card.value|metric_value:"decimal" }}{% endif %}</span>
+      <span class="tile__sub">{{ card.metric.question }}</span>
+      <div class="tile__meter" aria-hidden="true"><span style="width: {{ card.value|bar_width }}%"></span></div>
+    </div>
+  {% endfor %}
+</div>

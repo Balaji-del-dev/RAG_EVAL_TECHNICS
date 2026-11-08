@@ -1,0 +1,27 @@
+{
+  "retriever": "Hand-written top 5 from the design's worked example (not produced by a real retriever)",
+  "results": {
+    "Q1": [
+      {
+        "chunk_id": "C104",
+        "rank": 1
+      },
+      {
+        "chunk_id": "C101",
+        "rank": 2
+      },
+      {
+        "chunk_id": "C105",
+        "rank": 3
+      },
+      {
+        "chunk_id": "C102",
+        "rank": 4
+      },
+      {
+        "chunk_id": "C106",
+        "rank": 5
+      }
+    ]
+  }
+}

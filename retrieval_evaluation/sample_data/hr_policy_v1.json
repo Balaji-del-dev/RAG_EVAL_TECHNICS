@@ -1,0 +1,319 @@
+{
+  "name": "HR Policy Evaluation",
+  "version": "1.0",
+  "description": "Sample dataset: 26 chunks of an invented HR policy handbook and 14 test questions with graded ground truth (3 = highly relevant, 1 = somewhat relevant). Some questions use words the chunks do not (fathers / paternity, appraisals / reviews) to show where lexical retrievers fail.",
+  "chunks": [
+    {
+      "chunk_id": "C101",
+      "title": "Maternity leave eligibility",
+      "text": "Maternity leave policy: female employees are eligible for maternity leave once they have worked for the company for at least 80 days in the 12 months before the expected date of delivery. Eligibility covers permanent and fixed-term employees."
+    },
+    {
+      "chunk_id": "C102",
+      "title": "Maternity leave duration",
+      "text": "Eligible employees receive 26 weeks of paid maternity leave for each of their first two children. Up to 8 weeks of maternity leave can be taken before the expected delivery date. From the third child, maternity leave is 12 weeks."
+    },
+    {
+      "chunk_id": "C103",
+      "title": "Maternity leave application process",
+      "text": "To apply for maternity leave, submit a maternity leave request in the HR portal at least 8 weeks before the planned start date and attach a medical certificate showing the expected delivery date. The request is approved by your reporting manager and HR."
+    },
+    {
+      "chunk_id": "C104",
+      "title": "Paternity leave",
+      "text": "Paternity leave policy: male employees can take 5 working days of paid paternity leave within three months of the birth of their child. Paternity leave is separate from maternity leave and is applied for through the leave policy in the HR portal."
+    },
+    {
+      "chunk_id": "C105",
+      "title": "Work from home",
+      "text": "Work from home policy: employees may work from home up to two days a week with their manager's approval. The policy does not apply during probation, and employees must stay reachable during core hours from 11:00 to 16:00."
+    },
+    {
+      "chunk_id": "C106",
+      "title": "Employee insurance",
+      "text": "All employees, their spouse and up to two children are covered by group health insurance with a sum insured of 5 lakh. The policy also covers maternity hospitalisation expenses up to 50,000 per delivery."
+    },
+    {
+      "chunk_id": "C107",
+      "title": "Annual leave entitlement",
+      "text": "Employees earn 18 days of paid annual leave per calendar year, credited at 1.5 days at the start of every month. New joiners earn annual leave from their date of joining."
+    },
+    {
+      "chunk_id": "C108",
+      "title": "Sick leave",
+      "text": "Employees receive 12 days of paid sick leave per calendar year. A medical certificate is required for sick leave of more than two consecutive working days. Unused sick leave does not carry forward."
+    },
+    {
+      "chunk_id": "C109",
+      "title": "Leave carry-forward and encashment",
+      "text": "Up to 10 unused annual leave days can be carried forward to the next calendar year. Annual leave days above that limit are encashed at the basic salary rate in the January payroll."
+    },
+    {
+      "chunk_id": "C110",
+      "title": "Leave application process",
+      "text": "Apply for annual, sick or casual leave in the HR portal under Leave > Apply. The request goes to your reporting manager, who must approve or reject it within two working days."
+    },
+    {
+      "chunk_id": "C111",
+      "title": "Notice period",
+      "text": "The notice period is 30 days during probation and 60 days after confirmation. The company may waive the notice period, or the employee may buy out the remaining notice period, with HR approval."
+    },
+    {
+      "chunk_id": "C112",
+      "title": "Resignation process",
+      "text": "To resign, submit your resignation letter in the HR portal under Separation. HR confirms your last working day, schedules an exit interview and starts the full and final settlement."
+    },
+    {
+      "chunk_id": "C113",
+      "title": "Probation period",
+      "text": "New employees serve a probation period of six months. At the end of probation, the manager completes a probation review and the employee is confirmed, or probation is extended by up to three months."
+    },
+    {
+      "chunk_id": "C114",
+      "title": "Performance review cycle",
+      "text": "Performance reviews take place twice a year, in April and October. The October rating decides the annual salary increment and the performance bonus."
+    },
+    {
+      "chunk_id": "C115",
+      "title": "Travel reimbursement",
+      "text": "Business travel is reimbursed for economy airfare, hotel stays within the city limit and a daily meal allowance. Travel must be approved by your manager before you book tickets."
+    },
+    {
+      "chunk_id": "C116",
+      "title": "Expense claim submission",
+      "text": "Submit expense claims with the original bills in the finance portal within 30 days of spending. Approved expense claims are reimbursed with the next monthly salary."
+    },
+    {
+      "chunk_id": "C117",
+      "title": "Laptop and IT equipment",
+      "text": "Every employee receives a company laptop on joining. Lost, stolen or damaged equipment must be reported to the IT helpdesk within 24 hours."
+    },
+    {
+      "chunk_id": "C118",
+      "title": "Password and account security",
+      "text": "Account passwords must be at least 12 characters long and expire every 90 days. Never share your password, and report suspected phishing emails to IT security."
+    },
+    {
+      "chunk_id": "C119",
+      "title": "Health insurance claim process",
+      "text": "For cashless treatment, show your insurance card at a network hospital. For a reimbursement claim, send the claim form, original bills and the discharge summary to the insurer within 30 days of discharge."
+    },
+    {
+      "chunk_id": "C120",
+      "title": "Home office equipment allowance",
+      "text": "Employees who work from home regularly can claim a one-time home office allowance of up to 10,000 for a chair, desk or monitor, through the expense claim process."
+    },
+    {
+      "chunk_id": "C121",
+      "title": "Public holiday calendar",
+      "text": "The company observes 10 public holidays each year. The holiday calendar is published in the HR portal every December, and employees may also take 2 optional holidays."
+    },
+    {
+      "chunk_id": "C122",
+      "title": "Overtime compensation",
+      "text": "Non-managerial employees who work more than 9 hours in a day, or on a public holiday, are paid overtime at twice the hourly rate or may take a compensatory day off."
+    },
+    {
+      "chunk_id": "C123",
+      "title": "Bereavement leave",
+      "text": "Employees may take up to 5 days of paid bereavement leave on the death of an immediate family member."
+    },
+    {
+      "chunk_id": "C124",
+      "title": "Adoption leave",
+      "text": "Employees who legally adopt a child younger than three months receive 12 weeks of paid adoption leave, starting from the date the child is handed over."
+    },
+    {
+      "chunk_id": "C125",
+      "title": "Harassment reporting",
+      "text": "Report harassment or misconduct at work to the Internal Committee by email, or anonymously through the ethics helpline. Every complaint is investigated within 90 days, and retaliation against the person reporting is prohibited."
+    },
+    {
+      "chunk_id": "C126",
+      "title": "Code of conduct",
+      "text": "Employees must act with integrity, avoid conflicts of interest and protect confidential information. Gifts above 2,000 in value must be declared to the compliance team."
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "Q1",
+      "text": "What is the maternity leave policy?",
+      "ground_truth": [
+        {
+          "chunk_id": "C101",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C102",
+          "grade": 2
+        },
+        {
+          "chunk_id": "C103",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "query_id": "Q2",
+      "text": "How many days of sick leave do I get?",
+      "ground_truth": [
+        {
+          "chunk_id": "C108",
+          "grade": 3
+        }
+      ]
+    },
+    {
+      "query_id": "Q3",
+      "text": "Can I carry forward unused annual leave?",
+      "ground_truth": [
+        {
+          "chunk_id": "C109",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C107",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "query_id": "Q4",
+      "text": "How do I apply for leave?",
+      "ground_truth": [
+        {
+          "chunk_id": "C110",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C103",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "query_id": "Q5",
+      "text": "What is the notice period after resignation?",
+      "ground_truth": [
+        {
+          "chunk_id": "C111",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C112",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "query_id": "Q6",
+      "text": "How do I claim reimbursement for travel expenses?",
+      "ground_truth": [
+        {
+          "chunk_id": "C115",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C116",
+          "grade": 2
+        }
+      ]
+    },
+    {
+      "query_id": "Q7",
+      "text": "How do I make a health insurance claim?",
+      "ground_truth": [
+        {
+          "chunk_id": "C119",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C106",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "query_id": "Q8",
+      "text": "Can I work from home?",
+      "ground_truth": [
+        {
+          "chunk_id": "C105",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C120",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "query_id": "Q9",
+      "text": "How long is the probation period?",
+      "ground_truth": [
+        {
+          "chunk_id": "C113",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C111",
+          "grade": 1
+        }
+      ]
+    },
+    {
+      "query_id": "Q10",
+      "text": "How do I report harassment at work?",
+      "ground_truth": [
+        {
+          "chunk_id": "C125",
+          "grade": 3
+        }
+      ]
+    },
+    {
+      "query_id": "Q11",
+      "text": "Do new fathers get time off when a baby is born?",
+      "ground_truth": [
+        {
+          "chunk_id": "C104",
+          "grade": 3
+        }
+      ]
+    },
+    {
+      "query_id": "Q12",
+      "text": "How often do I have to change my password?",
+      "ground_truth": [
+        {
+          "chunk_id": "C118",
+          "grade": 3
+        }
+      ]
+    },
+    {
+      "query_id": "Q13",
+      "text": "When are performance appraisals done?",
+      "ground_truth": [
+        {
+          "chunk_id": "C114",
+          "grade": 3
+        }
+      ]
+    },
+    {
+      "query_id": "Q14",
+      "text": "Do I get extra pay for working on a holiday?",
+      "ground_truth": [
+        {
+          "chunk_id": "C122",
+          "grade": 3
+        },
+        {
+          "chunk_id": "C121",
+          "grade": 1
+        }
+      ]
+    }
+  ]
+}

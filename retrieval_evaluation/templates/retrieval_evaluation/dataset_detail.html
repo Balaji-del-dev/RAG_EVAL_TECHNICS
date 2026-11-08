@@ -1,0 +1,95 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}{{ dataset }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="{% url 'retrieval_evaluation:dataset_list' %}">Datasets</a><span aria-hidden="true">/</span><span>{{ dataset.name }}</span></nav>
+    <h1>{{ dataset.name }} <span class="muted">v{{ dataset.version }}</span></h1>
+    {% if dataset.description %}<p class="muted">{{ dataset.description }}</p>{% endif %}
+  </div>
+  <div class="page-head__actions">
+    <a class="btn" href="{% url 'retrieval_evaluation:dataset_export' dataset.pk %}">Export JSON</a>
+    <form method="post" action="{% url 'retrieval_evaluation:dataset_delete' dataset.pk %}" data-confirm="Delete {{ dataset }} and all {{ runs|length }} of its evaluation runs? This cannot be undone.">{% csrf_token %}
+      <button class="btn btn--danger" type="submit">Delete</button>
+    </form>
+    <a class="btn btn--primary" href="{% url 'retrieval_evaluation:evaluation_create' %}?dataset={{ dataset.pk }}">Evaluate this dataset</a>
+  </div>
+</div>
+
+<div class="stack">
+  <div class="tiles tiles--compact" style="grid-template-columns: repeat(4, minmax(0,1fr))">
+    <div class="tile"><span class="tile__label">Queries</span><span class="tile__value">{{ queries|length }}</span></div>
+    <div class="tile"><span class="tile__label">Ground-truth labels</span><span class="tile__value">{{ label_count }}</span></div>
+    <div class="tile"><span class="tile__label">Chunks in corpus</span><span class="tile__value">{{ chunk_count }}</span>
+      {% if not chunk_count %}<span class="tile__sub">No corpus: use the HTTP or uploaded-results retriever.</span>{% endif %}</div>
+    <div class="tile"><span class="tile__label">Evaluation runs</span><span class="tile__value">{{ runs|length }}</span></div>
+  </div>
+
+  {% if unlabelled %}
+    <div class="message message--warning"><span class="message__icon" aria-hidden="true"></span>
+      <span>{{ unlabelled|length }} query(ies) have no relevant chunk and will be reported as errors in a run:
+        {% for q in unlabelled %}<a href="{% url 'retrieval_evaluation:query_detail' dataset.pk q.pk %}">{{ q.query_id }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}.</span></div>
+  {% endif %}
+
+  <div class="grid-main">
+    <section class="card" aria-labelledby="queries-title">
+      <div class="card__head"><div><h2 id="queries-title">Queries and ground truth</h2><p>Open a query to change its labels.</p></div></div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>ID</th><th>Question</th><th>Expected chunks</th></tr></thead>
+          <tbody>
+            {% for q in queries %}
+              <tr>
+                <td class="nowrap"><a class="mono" href="{% url 'retrieval_evaluation:query_detail' dataset.pk q.pk %}">{{ q.query_id }}</a></td>
+                <td><a href="{% url 'retrieval_evaluation:query_detail' dataset.pk q.pk %}" style="color:inherit">{{ q.text }}</a></td>
+                <td>
+                  <div class="chips">
+                    {% for label in q.ground_truth.all %}
+                      <span class="chip {% if label.grade %}chip--strong{% endif %}" title="{{ chunk_titles|get_item:label.chunk_id|default:'Not in corpus' }} · grade {{ label.grade }}"><span class="mono">{{ label.chunk_id }}</span> · {{ label.grade }}</span>
+                    {% empty %}<span class="small low">No labels</span>{% endfor %}
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="3"><div class="empty">No queries yet. Add one on the right.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="card" aria-labelledby="add-title">
+        <div class="card__head"><h2 id="add-title">Add a query</h2></div>
+        <form class="card__body form" method="post" novalidate>{% csrf_token %}
+          {% include "retrieval_evaluation/partials/_form_errors.html" %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.query_id %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.text %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.chunk_id %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.grade %}
+          <div class="form-actions"><button class="btn btn--primary" type="submit">Add query</button></div>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="history-title">
+        <div class="card__head"><h2 id="history-title">Experiment history</h2>
+          {% if runs %}<a class="small" href="{% url 'retrieval_evaluation:run_list' %}?dataset={{ dataset.pk }}">All runs</a>{% endif %}</div>
+        {% if runs %}
+          <ul class="list-plain card__body">
+            {% for run in runs|slice:":8" %}
+              <li class="row row--between">
+                <div style="display:grid;gap:2px;min-width:0"><a href="{{ run.get_absolute_url }}">#{{ run.pk }} {{ run.name }}</a>
+                  <span class="small muted">K = {{ run.top_k }} · {{ run.created_at|date:"j M, H:i" }}</span></div>
+                <span class="small num">NDCG {{ run.avg_ndcg|metric_value:"decimal" }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="empty"><p>No runs on this dataset yet.</p></div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% load eval_tags %}{% spaceless %}
+<span class="grade" title="Grade {{ grade }}: {{ grade|grade_label }}">
+  <span class="grade__pips" aria-hidden="true"><i class="{% if grade >= 1 %}on{% endif %}"></i><i class="{% if grade >= 2 %}on{% endif %}"></i><i class="{% if grade >= 3 %}on{% endif %}"></i></span>
+  <span>Grade {{ grade }}{% if long %} · {{ grade|grade_label }}{% endif %}</span>
+</span>
+{% endspaceless %}

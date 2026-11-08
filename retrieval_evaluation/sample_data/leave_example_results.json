@@ -1,0 +1,8 @@
+{
+  "retriever": "Hand-written top 5 for the HR leave policy lesson (not produced by a real retriever)",
+  "results": {
+    "Q1": ["D1", "D4", "D2", "D5", "D6"],
+    "Q2": ["D7", "D9", "D5", "D10", "D6"],
+    "Q3": ["D4", "D5", "D7", "D6", "D8"]
+  }
+}

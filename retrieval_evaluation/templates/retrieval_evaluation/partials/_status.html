@@ -1,0 +1,6 @@
+{% load eval_tags %}{% spaceless %}
+<span class="status status--{{ code }}">
+  <span class="status__icon" aria-hidden="true">{% if code == "pass" or code == "completed" %}&#10003;{% elif code == "weak" %}!{% elif code == "failed" %}&#10005;{% elif code == "error" %}?{% else %}&#8226;{% endif %}</span>
+  <span>{% if label %}{{ label }}{% else %}{{ code|status_label }}{% endif %}</span>
+</span>
+{% endspaceless %}

@@ -1,0 +1,467 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}What the scores mean · run #{{ run.pk }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="{% url 'retrieval_evaluation:run_list' %}">Runs</a><span aria-hidden="true">/</span>
+      <a href="{{ run.get_absolute_url }}">#{{ run.pk }} {{ run.name }}</a><span aria-hidden="true">/</span><span>Explanation</span>
+    </nav>
+    <h1>What these scores mean</h1>
+    <div class="meta">
+      <span>Run <strong>#{{ run.pk }} {{ run.name }}</strong></span>
+      <span>{{ run.dataset }}</span>
+      <span>{{ run.get_retriever_type_display }}</span>
+      <span>K = <strong>{{ run.top_k }}</strong></span>
+      <span><strong>{{ x.n }}</strong> questions scored</span>
+    </div>
+  </div>
+  <div class="page-head__actions">
+    <a class="btn btn--sm" href="{{ run.get_absolute_url }}">Back to results</a>
+  </div>
+</div>
+
+{% if not x.available or not lesson.available %}
+  <section class="card"><div class="empty"><p>No query was scored in this run, so there is nothing to explain.</p></div></section>
+{% else %}
+{% with ex=lesson.example k=lesson.k fail=lesson.failure %}
+<div class="stack">
+
+  {# ============================================================ In short #}
+  <section class="card" aria-labelledby="summary-title">
+    <div class="card__head"><h2 id="summary-title">In short</h2></div>
+    <div class="card__body stack-sm" style="gap:24px">
+      <p class="lead">{{ x.summary }}</p>
+      {% include "retrieval_evaluation/partials/_metric_tiles.html" with cards=cards %}
+      <nav class="toc" aria-label="On this page">
+        <a href="#step-1">Step 1 · The dataset</a>
+        <a href="#step-2">Step 2 · All 6 metrics</a>
+        <a href="#step-3">Step 3 · Summary</a>
+        <a href="#step-4">Step 4 · All chunks wrong</a>
+        <a href="#step-5">Step 5 · How to fix it</a>
+      </nav>
+    </div>
+  </section>
+
+  {# ============================================================ Step 1 #}
+  <section class="card" id="step-1" aria-labelledby="s1-title">
+    <div class="card__head card__head--wrap">
+      <div><h2 id="s1-title">Step 1: Take one question from the dataset</h2>
+        <p>Let's use one question from this run for all six metrics. Each test question goes to the retriever, the top {{ k }} chunk IDs come back, and each one is checked against the ground truth.</p></div>
+      <form method="get" class="example-picker">
+        <label for="example-q" class="small muted">Example question</label>
+        <select id="example-q" name="q">
+          {% for r in lesson.choices %}<option value="{{ r.pk }}"{% if r.pk == ex.result.pk %} selected{% endif %}>{{ r.query_external_id }} · {{ r.query_text|truncatechars:60 }}</option>{% endfor %}
+        </select>
+        {% if request.GET.fail %}<input type="hidden" name="fail" value="{{ request.GET.fail }}">{% endif %}
+        <button class="btn btn--sm" type="submit">Show</button>
+      </form>
+    </div>
+    <div class="card__body lesson-body">
+      <div class="stack-sm">
+        <span class="lesson__k">User question</span>
+        <p class="question"><span class="mono">{{ ex.result.query_external_id }}</span> {{ ex.result.query_text }}</p>
+      </div>
+
+      <div class="stack-sm">
+        <h3>Correct information in the ground truth</h3>
+        <p class="muted">There {% if ex.total_relevant == 1 %}is 1 relevant chunk{% else %}are {{ ex.total_relevant }} relevant chunks{% endif %}.</p>
+        <div class="table-wrap"><table class="table table--compact">
+          <caption class="visually-hidden">Correct chunks for {{ ex.result.query_external_id }}</caption>
+          <thead><tr><th scope="col">Chunk ID</th><th scope="col">Document information</th><th scope="col">Relevance</th><th scope="col">Retrieved?</th></tr></thead>
+          <tbody>
+            {% for row in ex.expected_rows %}
+            <tr>
+              <td class="mono">{{ row.chunk_id }}</td>
+              <td>{% if row.title or row.text %}<div class="cell-main"><strong>{{ row.title }}</strong><span class="small muted">{{ row.text|truncatechars:140 }}</span></div>{% else %}<span class="muted">No text in this dataset</span>{% endif %}</td>
+              <td>{% include "retrieval_evaluation/partials/_grade.html" with grade=row.grade long=True %}</td>
+              <td>{% if row.rank %}<span class="tag tag--found">Found at rank {{ row.rank }}</span>{% else %}<span class="tag tag--missed">Missed</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="stack-sm">
+        <h3>Our retriever returned the top {{ k }} chunks</h3>
+        {% if ex.retrieved_rows %}
+        <div class="table-wrap"><table class="table table--compact">
+          <caption class="visually-hidden">Top {{ k }} chunks retrieved for {{ ex.result.query_external_id }}</caption>
+          <thead><tr><th scope="col" class="num col-rank">Rank</th><th scope="col">Retrieved chunk</th><th scope="col">Relevance</th></tr></thead>
+          <tbody>
+            {% for row in ex.retrieved_rows %}
+            <tr>
+              <td class="num">{{ row.rank }}</td>
+              <td><span class="mono">{{ row.chunk_id }}</span>{% if row.title %} – {{ row.title }}{% endif %}</td>
+              <td>{% if row.relevant %}<span class="tag tag--relevant">Relevant</span>{% else %}<span class="tag tag--irrelevant">Irrelevant</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+        {% else %}<p class="muted">The retriever returned no chunks for this question.</p>{% endif %}
+      </div>
+
+      <div class="stack-sm">
+        <h3>Our calculation values</h3>
+        <ul class="values">
+          <li><span>Total relevant chunks</span><strong>{{ ex.total_relevant }}</strong></li>
+          <li><span>Retrieved chunks (K)</span><strong>{{ k }}</strong>{% if ex.returned < k %}<span class="small muted">only {{ ex.returned }} came back</span>{% endif %}</li>
+          <li><span>Relevant retrieved chunks</span><strong>{{ ex.found }}</strong></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  {# ============================================================ Step 2 #}
+  <section class="card" id="step-2" aria-labelledby="s2-title">
+    <div class="card__head"><div><h2 id="s2-title">Step 2: Calculate all 6 metrics</h2>
+      <p>Metrics 1, 2, 3 and 6 use the question above ({{ ex.result.query_external_id }}). Metrics 4 and 5 are about many questions, so they use all {{ lesson.n }} questions in this run.</p></div></div>
+    <ol class="lessons">
+      {% for s in lesson.steps %}
+      <li class="lesson" id="metric-{{ s.key }}">
+        <h3 class="lesson__title"><span class="lesson__no" aria-hidden="true">{{ forloop.counter }}</span>{{ s.label }}</h3>
+        <dl class="lesson__rows">
+          <dt>Question</dt><dd>{{ s.question }}</dd>
+
+          {% if s.intro %}<dt class="visually-hidden">Data</dt><dd class="lesson__wide">
+            <p>{{ s.intro }}</p>
+            {% if s.table_kind == "hit" or s.table_kind == "mrr" %}
+            <div class="table-wrap lesson__table"><table class="table table--compact">
+              <caption class="visually-hidden">{% if s.table_kind == "hit" %}Hit per question{% else %}First correct position per question{% endif %}</caption>
+              <thead><tr><th scope="col">Question</th>
+                {% if s.table_kind == "hit" %}<th scope="col">Found a correct chunk?</th>
+                {% else %}<th scope="col" class="num">First correct position</th><th scope="col" class="num">Reciprocal rank</th>{% endif %}</tr></thead>
+              <tbody>
+                {% for row in lesson.query_rows %}
+                <tr{% if row.is_example %} class="is-example"{% endif %}>
+                  <td><a href="{{ row.result.get_absolute_url }}" class="mono">{{ row.result.query_external_id }}</a> {{ row.result.query_text|truncatechars:70 }}{% if row.is_example %} <span class="tag tag--irrelevant">example</span>{% endif %}</td>
+                  {% if s.table_kind == "hit" %}
+                    <td>{% if row.found %}{% include "retrieval_evaluation/partials/_status.html" with code="pass" label="Yes" %}{% else %}{% include "retrieval_evaluation/partials/_status.html" with code="failed" label="No" %}{% endif %}</td>
+                  {% else %}
+                    <td class="num">{% if row.rank %}{{ row.rank }}{% else %}Not found{% endif %}</td>
+                    <td class="num mono">{{ row.rr }}</td>
+                  {% endif %}
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table></div>
+            {% elif s.table_kind == "ndcg" %}
+            <div class="table-wrap lesson__table"><table class="table table--compact">
+              <caption class="visually-hidden">Relevance score per rank for {{ ex.result.query_external_id }}</caption>
+              <thead><tr><th scope="col" class="num col-rank">Rank</th><th scope="col">Chunk</th><th scope="col" class="num">Relevance score</th></tr></thead>
+              <tbody>
+                {% for row in s.ndcg_table %}
+                <tr><td class="num">{{ row.rank }}</td><td><span class="mono">{{ row.chunk_id }}</span>{% if row.title %} – {{ row.title }}{% endif %}</td><td class="num mono">{{ row.score }}</td></tr>
+                {% empty %}<tr><td colspan="3" class="muted">No chunks were retrieved.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table></div>
+            {% endif %}
+          </dd>{% endif %}
+
+          <dt>Formula</dt>
+          <dd class="lesson__math">{% for line in s.formula %}<div>{% include "retrieval_evaluation/partials/_math.html" with parts=line %}</div>{% endfor %}
+            {% if s.note %}<p class="small muted">{{ s.note }}</p>{% endif %}</dd>
+
+          <dt>Calculation</dt>
+          <dd class="lesson__math">{% for c in s.calc %}<div class="lesson__calc">{% if c.caption %}<span class="small muted">{{ c.caption }}</span>{% endif %}{% include "retrieval_evaluation/partials/_math.html" with parts=c.parts %}</div>{% endfor %}</dd>
+
+          <dt>Result</dt><dd><span class="lesson__result">{{ s.result }}</span></dd>
+          <dt>Meaning</dt><dd>{{ s.meaning }}</dd>
+        </dl>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {# ============================================================ Step 3 #}
+  <section class="card" id="step-3" aria-labelledby="s3-title">
+    <div class="card__head"><div><h2 id="s3-title">Step 3: Final summary – all calculations</h2>
+      <p>The example column is question {{ ex.result.query_external_id }} (Hit Rate and MRR: all questions). The last column is the average over all {{ lesson.n }} questions, which is what the score tiles show.</p></div></div>
+    <div class="table-wrap"><table class="table">
+      <caption class="visually-hidden">All six calculations</caption>
+      <thead><tr><th scope="col">Metric</th><th scope="col">Calculation</th><th scope="col" class="num">Result</th><th scope="col" class="num">Whole run ({{ lesson.n }} questions)</th></tr></thead>
+      <tbody>
+        {% for row in lesson.summary_rows %}
+        <tr><th scope="row">{{ row.label }}</th><td class="mono">{{ row.calc }}</td><td class="num"><strong>{{ row.result }}</strong></td><td class="num">{{ row.run }}{% if row.whole_run %} <span class="small muted">(same)</span>{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    <div class="card__body stack" style="border-top:1px solid var(--border)">
+      <div class="stack-sm">
+        <h3>What the whole-run numbers tell you</h3>
+        <ul class="list-plain readings">
+          {% for s in x.stories %}
+          <li class="reading">
+            {% if s.tone == "good" %}{% include "retrieval_evaluation/partials/_status.html" with code="pass" label="Good" %}{% elif s.tone == "watch" %}{% include "retrieval_evaluation/partials/_status.html" with code="weak" label="Watch" %}{% else %}{% include "retrieval_evaluation/partials/_status.html" with code="failed" label="Problem" %}{% endif %}
+            <div><strong>{{ s.label }} {{ s.value_text }}</strong> · {{ s.reading }}
+              <div class="small muted">Catches: {{ s.problem }} Fix: {{ s.fixes }}</div></div>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="stack-sm">
+        <h3>The {{ x.counts.slots }} result slots in this run ({{ x.n }} questions × top {{ x.k }})</h3>
+        {% with c=x.counts %}
+        <div class="segbar" role="img" aria-label="{{ c.relevant }} relevant, {{ c.irrelevant }} not relevant, {{ c.empty }} empty, out of {{ c.slots }} slots">
+          {% if c.relevant %}<span class="segbar__part segbar__part--relevant" style="flex: {{ c.relevant }}" tabindex="0"
+                data-tip-title="Relevant chunks" data-tip-value="{{ c.relevant }} of {{ c.slots }} slots">{{ c.relevant }}</span>{% endif %}
+          {% if c.irrelevant %}<span class="segbar__part segbar__part--irrelevant" style="flex: {{ c.irrelevant }}" tabindex="0"
+                data-tip-title="Not relevant" data-tip-value="{{ c.irrelevant }} of {{ c.slots }} slots">{{ c.irrelevant }}</span>{% endif %}
+          {% if c.empty %}<span class="segbar__part segbar__part--empty" style="flex: {{ c.empty }}" tabindex="0"
+                data-tip-title="Empty" data-tip-value="{{ c.empty }} of {{ c.slots }} slots" data-tip-note="The retriever returned fewer than K chunks">{{ c.empty }}</span>{% endif %}
+        </div>
+        <div class="legend">
+          <span class="legend__item"><span class="legend__swatch legend__swatch--relevant"></span>Relevant</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--irrelevant"></span>Not relevant</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--empty"></span>Empty (fewer than {{ x.k }} returned)</span>
+        </div>
+        <p class="small muted">The ground truth has {{ c.total_relevant }} relevant chunks in total for these questions, so at most {{ c.total_relevant }} of the {{ c.slots }} slots can ever be relevant. That caps Precision@{{ x.k }} at {{ c.precision_ceiling|metric_value:"percent" }}.</p>
+        {% endwith %}
+      </div>
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="link-title">
+      <div class="card__head"><div><h2 id="link-title">How they link together</h2>
+        <p>Each metric reuses the same comparison and asks one more thing.</p></div></div>
+      <ol class="chain card__body">
+        <li><span class="chain__tag">Count</span><div><strong>Precision</strong> divides the relevant chunks found by the {{ k }} slots. <em>Is what we return clean?</em></div></li>
+        <li><span class="chain__tag">Count</span><div><strong>Recall</strong> divides the <em>same</em> relevant count by all relevant chunks in the ground truth. <em>Did we miss anything?</em></div></li>
+        <li><span class="chain__tag">Combine</span><div><strong>F1</strong> joins Precision and Recall into one number that is only high when both are.</div></li>
+        <li><span class="chain__tag">Yes / no</span><div><strong>Hit Rate</strong> keeps one question per query: was the relevant count at least 1? It is the yes/no version of Recall.</div></li>
+        <li><span class="chain__tag">+ position</span><div><strong>MRR</strong> adds <em>where</em>: for a hit, how high is the first relevant chunk?</div></li>
+        <li><span class="chain__tag">+ all positions + grades</span><div><strong>NDCG</strong> adds where <em>every</em> relevant chunk is, and how relevant it is.</div></li>
+      </ol>
+    </section>
+    <section class="card" aria-labelledby="rules-title">
+      <div class="card__head"><div><h2 id="rules-title">Rules that always hold</h2><p>Checked on this run's numbers.</p></div></div>
+      <ul class="list-plain card__body">
+        {% for r in x.rules %}
+          <li class="rule">
+            {% if r.holds %}{% include "retrieval_evaluation/partials/_status.html" with code="pass" label="Holds" %}{% else %}{% include "retrieval_evaluation/partials/_status.html" with code="failed" label="Broken" %}{% endif %}
+            <div><strong>{{ r.rule }}</strong> <span class="mono small">{{ r.values }}</span><div class="small muted">{{ r.why }}</div></div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+
+  {# ============================================================ Step 4 #}
+  {% with fq=fail.q %}
+  <section class="card" id="step-4" aria-labelledby="s4-title">
+    <div class="card__head"><div><h2 id="s4-title">Step 4: When all retrieved chunks are wrong</h2>
+      {% if fail.hypothetical %}
+        <p>No question in this run came back with only wrong chunks (Hit Rate {{ x.stories.3.value_text }}). This is what would happen if {{ fq.result.query_external_id }} did.</p>
+      {% else %}
+        <p>This happened to <strong>{{ fq.result.query_external_id }}</strong> in this run{% if fail.others %}, and to {{ fail.others|length }} more question{{ fail.others|length|pluralize }}{% endif %}.</p>
+      {% endif %}</div></div>
+    <div class="card__body lesson-body">
+      {% if fail.others %}
+      <div class="row small"><span class="muted">Show another failed question:</span>
+        {% for r in fail.others %}<a class="chip chip--strong" href="?{% if request.GET.q %}q={{ request.GET.q }}&amp;{% endif %}fail={{ r.pk }}#step-4"><span class="mono">{{ r.query_external_id }}</span> {{ r.query_text|truncatechars:40 }}</a>{% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="stack-sm">
+        <h3>1. Example: {% if fail.hypothetical %}suppose {% endif %}{% if fail.wrong_count %}all {{ fail.wrong_count }} retrieved chunk{{ fail.wrong_count|pluralize }} {{ fail.wrong_count|pluralize:"is,are" }} wrong{% else %}the retriever returns nothing{% endif %}</h3>
+        <span class="lesson__k">User question</span>
+        <p class="question"><span class="mono">{{ fq.result.query_external_id }}</span> {{ fq.result.query_text }}</p>
+      </div>
+      <div class="grid-2">
+        <div class="stack-sm">
+          <h4>Actual correct information</h4>
+          <div class="table-wrap"><table class="table table--compact">
+            <caption class="visually-hidden">Correct chunks</caption>
+            <thead><tr><th scope="col">Chunk</th><th scope="col">Information</th><th scope="col">Status</th></tr></thead>
+            <tbody>{% for row in fq.expected_rows %}<tr><td class="mono">{{ row.chunk_id }}</td><td>{{ row.title|default:"—" }}</td><td><span class="tag tag--found">Correct</span></td></tr>{% endfor %}</tbody>
+          </table></div>
+        </div>
+        <div class="stack-sm">
+          <h4>But the retriever returns</h4>
+          {% if fail.hypothetical %}
+            <p class="muted">{{ k }} chunks that are not in the ground truth for this question.</p>
+          {% elif fq.retrieved_rows %}
+          <div class="table-wrap"><table class="table table--compact">
+            <caption class="visually-hidden">Retrieved chunks</caption>
+            <thead><tr><th scope="col" class="num col-rank">Rank</th><th scope="col">Retrieved chunk</th><th scope="col">Relevance</th></tr></thead>
+            <tbody>{% for row in fq.retrieved_rows %}<tr><td class="num">{{ row.rank }}</td><td><span class="mono">{{ row.chunk_id }}</span>{% if row.title %} – {{ row.title }}{% endif %}</td><td><span class="tag tag--missed">Wrong</span></td></tr>{% endfor %}</tbody>
+          </table></div>
+          {% else %}<p class="muted">No chunks at all: the retriever returned an empty list.</p>{% endif %}
+        </div>
+      </div>
+      <div class="callout callout--bad" role="note">{% include "retrieval_evaluation/partials/_status.html" with code="failed" label="0 correct chunks found" %}</div>
+
+      <div class="stack-sm">
+        <h3>2. Calculate all 6 metrics</h3>
+        <div class="table-wrap"><table class="table table--compact">
+          <caption class="visually-hidden">Metrics when every chunk is wrong</caption>
+          <thead><tr><th scope="col">Metric</th><th scope="col">Calculation</th><th scope="col" class="num">Result</th></tr></thead>
+          <tbody>{% for row in fail.zero_rows %}<tr><th scope="row">{{ row.label }}</th><td class="mono">{{ row.calc }}</td><td class="num"><strong>{{ row.result }}</strong></td></tr>{% endfor %}</tbody>
+        </table></div>
+        <p class="small muted">Note: F1 is defined as 0 when both Precision and Recall are zero (otherwise it would be 0 ÷ 0).</p>
+      </div>
+
+      <div class="stack-sm">
+        <h3>3. What happens inside the RAG system?</h3>
+        <ol class="vflow">
+          <li><strong>User question</strong><span>“{{ fq.result.query_text }}”</span></li>
+          <li><strong>Retriever – search top {{ k }}</strong><span>{{ run.get_retriever_type_display }}</span></li>
+          <li class="vflow__step--bad"><strong>{% if fail.wrong_count %}All {{ fail.wrong_count }} returned chunk{{ fail.wrong_count|pluralize }} {{ fail.wrong_count|pluralize:"is,are" }} irrelevant{% else %}No chunks come back{% endif %}</strong><span>Retrieval failure</span></li>
+          <li><strong>Evaluation engine</strong><span>All 6 metrics become 0</span></li>
+          <li class="vflow__step--good"><strong>Expected system behaviour</strong><span>Do not generate an unsupported answer. Return: “I couldn't find this information in the available documents. Please try another question or contact the document owner.”</span></li>
+        </ol>
+      </div>
+
+      <div class="stack-sm">
+        <h3>4. How do we fix this problem?</h3>
+        <div class="table-wrap"><table class="table table--compact">
+          <caption class="visually-hidden">Possible problems and what to check</caption>
+          <thead><tr><th scope="col">Possible problem</th><th scope="col">What to check</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Document missing</th><td>Is the source document uploaded to the knowledge base?</td></tr>
+            <tr><th scope="row">Parsing failure</th><td>Was the text extracted correctly from the PDF or web page?</td></tr>
+            <tr><th scope="row">Chunking issue</th><td>Is the answer split across chunks, or cut in the middle?</td></tr>
+            <tr><th scope="row">Embedding issue</th><td>Does vector search find chunks with the same meaning?</td></tr>
+            <tr><th scope="row">Query issue</th><td>Does the question use different words from the document?</td></tr>
+            <tr><th scope="row">Retrieval issue</th><td>Is hybrid search (keyword + vector) working?</td></tr>
+            <tr><th scope="row">Ranking issue</th><td>Does the reranker put the relevant chunks first?</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="callout" role="note">
+        <strong>Very important interview point</strong>
+        <p>Retrieval evaluation must find failure, not hide it. If all retrieved chunks are irrelevant, Precision, Recall, F1, Hit Rate, MRR and NDCG must all be zero. The generation layer should also have a relevance or confidence check, so it does not answer from irrelevant context.</p>
+      </div>
+    </div>
+  </section>
+
+  {# ============================================================ Step 5 #}
+  <section class="card" id="step-5" aria-labelledby="s5-title">
+    <div class="card__head"><div><h2 id="s5-title">Step 5: How to fix it, step by step</h2>
+      <p>The goal: find out why retrieval failed for {{ fq.result.query_external_id }} and correct it.</p></div></div>
+    <div class="card__body lesson-body">
+
+      <div class="stack-sm">
+        <h3>1. Identify the problem</h3>
+        <div class="grid-2">
+          <div><span class="lesson__k">Expected correct chunks</span>
+            <ul class="numbered" style="list-style:disc">{% for row in fq.expected_rows %}<li><span class="mono">{{ row.chunk_id }}</span>{% if row.title %}: {{ row.title }}{% endif %}</li>{% endfor %}</ul></div>
+          <div><span class="lesson__k">Retrieved chunks</span>
+            {% if fail.hypothetical %}<p class="muted">{{ k }} wrong chunks (hypothetical).</p>
+            {% else %}<ul class="numbered" style="list-style:disc">{% for row in fq.retrieved_rows %}<li><span class="mono">{{ row.chunk_id }}</span>{% if row.title %}: {{ row.title }}{% endif %}</li>{% empty %}<li>Nothing</li>{% endfor %}</ul>{% endif %}</div>
+        </div>
+        <div class="callout callout--bad" role="note">{% include "retrieval_evaluation/partials/_status.html" with code="failed" label="Retrieval failed" %} <span>0 / {{ k }} relevant chunks</span></div>
+      </div>
+
+      {% if fail.diagnosis.available %}
+      <div class="stack-sm">
+        <h3>What this app found for {{ fq.result.query_external_id }}</h3>
+        <ul class="list-plain checks">
+          {% for c in fail.diagnosis.checks %}
+          <li class="check">{% if c.ok %}{% include "retrieval_evaluation/partials/_status.html" with code="pass" label=c.label %}{% else %}{% include "retrieval_evaluation/partials/_status.html" with code="failed" label=c.label %}{% endif %}<span>{{ c.text }}</span></li>
+          {% endfor %}
+        </ul>
+        {% if fail.likely %}
+          <p><strong>Likely failure point:</strong> {{ fail.likely.0 }} → {{ fail.likely.1 }}.</p>
+        {% else %}
+          <p class="muted">The question shares words with the correct chunks, so a keyword search could find them. Check the retriever's index and ranking (steps 5 to 8 below).</p>
+        {% endif %}
+      </div>
+      {% elif not fail.hypothetical and not lesson.has_corpus %}
+        <p class="muted">This dataset has no chunk text, so the app cannot check the chunks itself. Work through the steps below in your own pipeline.</p>
+      {% endif %}
+
+      <div class="stack-sm">
+        <h3>2. Fix the issue step by step</h3>
+        <div class="table-wrap"><table class="table table--compact">
+          <caption class="visually-hidden">Fix steps</caption>
+          <thead><tr><th scope="col">Step</th><th scope="col">What we need to do</th><th scope="col">Simple example</th></tr></thead>
+          <tbody>{% for f in fail.fix_steps %}<tr><th scope="row" class="nowrap">{{ f.n }}. {{ f.step }}</th><td>{{ f.what }}</td><td>{{ f.example }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+
+      <div class="stack-sm">
+        <h3>3. Understand how the fix works</h3>
+        <ol class="vflow">
+          <li><strong>User query</strong><span>“{{ fq.result.query_text }}”</span></li>
+          <li><strong>Query rewriting</strong><span>“{{ fail.rewrite }}”</span></li>
+          <li><strong>Hybrid search</strong><span>BM25 keyword search + vector semantic search</span></li>
+          <li class="vflow__step--good"><strong>Retrieved correct chunks</strong><span>{% for row in fq.expected_rows %}{{ row.chunk_id }}{% if row.title %}: {{ row.title }}{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</span></li>
+          <li><strong>Reranker</strong><span>Rank the most relevant chunks first</span></li>
+          <li><strong>Evaluation</strong><span>Check Precision, Recall, F1, Hit Rate, MRR and NDCG again</span></li>
+        </ol>
+      </div>
+
+      <div class="stack-sm">
+        <h3>4. Before fixing vs after fixing</h3>
+        <div class="table-wrap"><table class="table table--compact">
+          <caption class="visually-hidden">Scores before and after the fix</caption>
+          <thead><tr><th scope="col">Metric</th><th scope="col" class="num">Before fixing</th><th scope="col" class="num">After fixing (example)</th></tr></thead>
+          <tbody>{% for row in fail.before_after %}<tr><th scope="row">{{ row.label }}</th><td class="num">{{ row.before }}</td><td class="num"><strong>{{ row.after }}</strong></td></tr>{% endfor %}</tbody>
+        </table></div>
+        <p class="small muted">{{ fail.after_note }} The numbers come from the same metric functions as the real scores.</p>
+      </div>
+
+      <div class="stack-sm">
+        <h3>5. What if it still returns wrong chunks?</h3>
+        <p>Do not change the embedding model or reranker straight away. First find the failure point:</p>
+        <div class="table-wrap"><table class="table table--compact">
+          <caption class="visually-hidden">Failure points and corrective actions</caption>
+          <thead><tr><th scope="col">Failure point</th><th scope="col">Corrective action</th></tr></thead>
+          <tbody>{% for p in fail.failure_points %}<tr{% if p.likely %} class="is-likely"{% endif %}><th scope="row">{{ p.point }}{% if p.likely %} <span class="tag tag--likely">likely here</span>{% endif %}</th><td>{{ p.action }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+
+      <div class="callout callout--warning" role="note">
+        <strong>6. Important production-level rule</strong>
+        <p>Never let the LLM answer blindly from irrelevant retrieved chunks. Before generation, check whether the retrieved context is relevant:</p>
+        <ul class="numbered" style="list-style:disc">
+          <li><strong>Relevant context found</strong> → generate the answer.</li>
+          <li><strong>No relevant context found</strong> → return “I couldn't find this information in the available documents.”</li>
+          <li><strong>Low-confidence retrieval</strong> → retry the search, or ask the user to clarify.</li>
+        </ul>
+      </div>
+
+      <div class="stack-sm">
+        <h3>Remember this troubleshooting order</h3>
+        <ol class="order" aria-label="Troubleshooting order">
+          <li>Document</li><li>Parsing</li><li>Chunking</li><li>Embedding</li><li>Indexing</li><li>Query</li><li>Retrieval</li><li>Reranking</li><li>Evaluation</li>
+        </ol>
+        <p class="small muted">Follow this order when you debug a failed RAG retrieval.</p>
+      </div>
+    </div>
+  </section>
+  {% endwith %}
+
+  {# ============================================================ Wrap-up #}
+  <div class="grid-2">
+    <section class="card" aria-labelledby="fix-title">
+      <div class="card__head"><h2 id="fix-title">What to fix first in this run</h2></div>
+      <div class="card__body stack-sm" style="gap:12px">
+        <ol class="numbered">{% for p in x.priorities %}<li>{{ p }}</li>{% endfor %}</ol>
+        {% if x.misses %}
+          <div class="chips">
+            {% for r in x.misses %}<a class="chip chip--strong" href="{{ r.get_absolute_url }}"><span class="mono">{{ r.query_external_id }}</span> {{ r.query_text|truncatechars:50 }}</a>{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </section>
+    <section class="card" aria-labelledby="why-title">
+      <div class="card__head"><h2 id="why-title">What problem this evaluation solves</h2></div>
+      <ul class="numbered card__body" style="list-style: disc">
+        <li><strong>Separates retrieval from generation.</strong> A wrong chatbot answer can come from the retriever (wrong chunks) or from the LLM. These scores test the retriever alone, so you know where to fix.</li>
+        <li><strong>Replaces guessing with numbers.</strong> Changing chunk size, embeddings, K or adding a reranker becomes a measured experiment, not a feeling.</li>
+        <li><strong>Finds the exact failing questions.</strong> Each query has its own scores, so you see which questions break and why.</li>
+        <li><strong>Catches regressions before users do.</strong> Compare a new retriever with the current one, and fail the build if a metric drops.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endif %}
+{% endblock %}

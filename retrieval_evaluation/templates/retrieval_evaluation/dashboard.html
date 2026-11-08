@@ -1,0 +1,130 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% load eval_tags %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Retrieval evaluation</h1>
+    <p class="muted">Compare your retriever's ranked chunks with ground truth and score them with six metrics.</p>
+  </div>
+  <div class="page-head__actions">
+    <a class="btn" href="{% url 'retrieval_evaluation:dataset_list' %}">Datasets</a>
+    <a class="btn btn--primary" href="{% url 'retrieval_evaluation:evaluation_create' %}">Run evaluation</a>
+  </div>
+</div>
+
+{% if not totals.datasets %}
+  <section class="card">
+    <div class="empty">
+      <h2>No evaluation dataset yet</h2>
+      <p>Load the three sample datasets: the worked example from the design, a three-question HR leave lesson, and a 14-question HR policy set with a 26-chunk corpus.</p>
+      <div class="row">
+        <form method="post" action="{% url 'retrieval_evaluation:load_sample' %}">{% csrf_token %}
+          <button class="btn btn--primary" type="submit">Load sample datasets</button>
+        </form>
+        <a class="btn" href="{% url 'retrieval_evaluation:dataset_list' %}">Upload a dataset</a>
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+<div class="stack">
+  {% if latest %}
+    <section class="stack-sm" aria-labelledby="latest-title">
+      <div class="row row--between">
+        <div class="stack-sm" style="gap:2px">
+          <h2 id="latest-title">Latest run · <a href="{{ latest.get_absolute_url }}">#{{ latest.pk }} {{ latest.name }}</a></h2>
+          <div class="meta">
+            <span>{{ latest.dataset }}</span>
+            <span>{{ latest.get_retriever_type_display }}</span>
+            <span>K = {{ latest.top_k }}</span>
+            <span>{{ latest.evaluated_count }} quer{{ latest.evaluated_count|pluralize:"y,ies" }}</span>
+            <span>{{ latest.created_at|date:"j M Y, H:i" }}</span>
+          </div>
+        </div>
+        {% if latest_summary %}
+          <div class="row">
+            <a class="btn btn--sm" href="{% url 'retrieval_evaluation:run_explain' latest.pk %}">Explain these scores</a>
+            {% for code, count in latest_summary.status_counts.items %}{% if count %}
+              <a class="chip" href="{{ latest.get_absolute_url }}?status={{ code }}#queries">{% include "retrieval_evaluation/partials/_status.html" with code=code %}<span class="num">{{ count }}</span></a>
+            {% endif %}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      {% include "retrieval_evaluation/partials/_metric_tiles.html" with cards=latest_cards %}
+    </section>
+  {% endif %}
+
+  <div class="grid-main">
+    <section class="card" aria-labelledby="recent-title">
+      <div class="card__head">
+        <h2 id="recent-title">Recent runs</h2>
+        <a href="{% url 'retrieval_evaluation:run_list' %}" class="small">All runs</a>
+      </div>
+      {% if recent_runs %}
+        <div class="table-wrap">
+          <table class="table table--compact">
+            <thead><tr>
+              <th>Run</th><th>Status</th><th class="num">K</th><th class="num">Recall</th><th class="num">MRR</th><th class="num">NDCG</th>
+            </tr></thead>
+            <tbody>
+              {% for run in recent_runs %}
+                <tr>
+                  <td><div class="cell-main"><a href="{{ run.get_absolute_url }}">#{{ run.pk }} {{ run.name }}</a><span class="small muted">{{ run.dataset }} · {{ run.get_retriever_type_display }}</span></div></td>
+                  <td>{% include "retrieval_evaluation/partials/_status.html" with code=run.status label=run.get_status_display %}</td>
+                  <td class="num">{{ run.top_k }}</td>
+                  <td class="num">{{ run.avg_recall|metric_value:"percent" }}</td>
+                  <td class="num">{{ run.mrr|metric_value:"decimal" }}</td>
+                  <td class="num">{{ run.avg_ndcg|metric_value:"decimal" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty"><p>No runs yet. Pick a dataset and a retriever to start.</p>
+          <a class="btn btn--primary btn--sm" href="{% url 'retrieval_evaluation:evaluation_create' %}">Run evaluation</a></div>
+      {% endif %}
+    </section>
+
+    <section class="card" aria-labelledby="datasets-title">
+      <div class="card__head">
+        <h2 id="datasets-title">Datasets</h2>
+        <a href="{% url 'retrieval_evaluation:dataset_list' %}" class="small">Manage</a>
+      </div>
+      {% if datasets %}
+        <ul class="list-plain card__body">
+          {% for ds in datasets %}
+            <li class="row row--between">
+              <div class="cell-main" style="display:grid;gap:2px"><a href="{{ ds.get_absolute_url }}">{{ ds.name }} <span class="muted">v{{ ds.version }}</span></a>
+                <span class="small muted">{{ ds.query_total }} quer{{ ds.query_total|pluralize:"y,ies" }} · {{ ds.run_total }} run{{ ds.run_total|pluralize }}</span></div>
+              <a class="btn btn--sm" href="{% url 'retrieval_evaluation:evaluation_create' %}?dataset={{ ds.pk }}">Evaluate</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty"><p>No datasets yet.</p></div>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="flow-title">
+    <div class="card__head">
+      <div><h2 id="flow-title">What happens when you run an evaluation</h2>
+        <p>Django scores the retriever's output. It never makes up retrieval results.</p></div>
+    </div>
+    <div class="card__body">
+      <ol class="pipeline" style="list-style:none;margin:0;padding:0">
+        <li class="pipeline__step"><strong>Start</strong><span>Pick a dataset, K and a retriever, then run.</span></li>
+        <li class="pipeline__step"><strong>Create run</strong><span>An EvaluationRun record stores the configuration.</span></li>
+        <li class="pipeline__step"><strong>Load dataset</strong><span>Test queries and their ground-truth grades.</span></li>
+        <li class="pipeline__step"><strong>Retrieve</strong><span>The adapter collects ranked chunk IDs from your retriever.</span></li>
+        <li class="pipeline__step"><strong>Match</strong><span>Retrieved IDs are matched with the expected IDs and grades.</span></li>
+        <li class="pipeline__step"><strong>Score</strong><span>Six metric functions run for every query.</span></li>
+        <li class="pipeline__step"><strong>Aggregate</strong><span>Averages over all evaluated queries.</span></li>
+        <li class="pipeline__step"><strong>Report</strong><span>Scores, ranks, missed chunks and failed queries.</span></li>
+      </ol>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% load eval_tags %}
+{# Single-series horizontal bars on a shared 0-100% scale. Values are labelled at the bar tips. #}
+<div class="barchart" role="img" aria-label="{{ aria_label|default:'Metric scores on a 0 to 100 percent scale' }}">
+  {% for card in cards %}
+    <div class="barchart__row" tabindex="0"
+         data-tip-title="{{ card.label }}"
+         data-tip-value="{{ card.value|metric_value:card.metric.display }}"
+         data-tip-note="{{ card.metric.formula }}{% if note %} · {{ note }}{% endif %}">
+      <span class="barchart__label">{{ card.label }}</span>
+      <div class="barchart__plot">
+        <span class="bar" style="width: {{ card.value|bar_width }}%"></span>
+        <span class="bar__value" style="left: {{ card.value|bar_width }}%">{{ card.value|metric_value:"percent-compact" }}</span>
+      </div>
+    </div>
+  {% endfor %}
+  <div class="barchart__axis" aria-hidden="true">
+    <span></span>
+    <div class="barchart__ticks">
+      <span style="left: 0">0%</span><span style="left: 25%">25%</span><span style="left: 50%">50%</span><span style="left: 75%">75%</span><span style="left: 100%">100%</span>
+    </div>
+  </div>
+</div>

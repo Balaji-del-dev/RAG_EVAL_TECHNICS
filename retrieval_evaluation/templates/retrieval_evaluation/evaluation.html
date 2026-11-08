@@ -1,0 +1,137 @@
+{% extends "retrieval_evaluation/base.html" %}
+{% block title %}New evaluation{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="page-head__text">
+    <h1>Create retrieval evaluation</h1>
+    <p class="muted">Pick a dataset, K and a retriever. Each query's ranked chunks are compared with its ground truth and scored.</p>
+  </div>
+</div>
+
+{% if not has_datasets %}
+  <section class="card"><div class="empty">
+    <h2>You need a dataset first</h2>
+    <p>Upload test questions with ground truth, or load the samples.</p>
+    <div class="row">
+      <form method="post" action="{% url 'retrieval_evaluation:load_sample' %}">{% csrf_token %}<button class="btn btn--primary" type="submit">Load sample datasets</button></form>
+      <a class="btn" href="{% url 'retrieval_evaluation:dataset_list' %}">Upload a dataset</a>
+    </div>
+  </div></section>
+{% else %}
+<div class="grid-main">
+  <form class="card" method="post" enctype="multipart/form-data" novalidate data-busy-label="Running evaluation…">
+    {% csrf_token %}
+    <div class="card__body form">
+      {% include "retrieval_evaluation/partials/_form_errors.html" %}
+
+      <div class="form-section">
+        <div class="form-section__title"><h2>Experiment</h2></div>
+        <div class="fields">
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.dataset %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.name %}
+        </div>
+        <div class="field{% if form.top_k.errors %} field--invalid{% endif %}">
+          <span class="field__label" id="topk-label">Top K</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="topk-label">
+            {% for radio in form.top_k %}<label>{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}
+          </div>
+          <span class="field__help">How many of the retriever's top-ranked chunks are scored. Precision@K divides by K.</span>
+          {% for error in form.top_k.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section__title"><h2>Retrieval configuration</h2>
+          <p>Where the ranked chunk IDs come from.</p></div>
+        <fieldset class="choice-list" style="border:0;padding:0;margin:0">
+          <legend class="visually-hidden">Retriever</legend>
+          {% for radio in form.retriever_type %}
+            <label class="choice" for="{{ radio.id_for_label }}">
+              {{ radio.tag }}
+              <span><strong>{{ radio.choice_label }}</strong>
+                <small>
+                  {% if radio.data.value == "bm25" %}Okapi BM25 over the dataset's chunk corpus. A strong lexical baseline.
+                  {% elif radio.data.value == "tfidf" %}Cosine similarity of TF-IDF vectors over the chunk corpus.
+                  {% elif radio.data.value == "fusion" %}BM25 and TF-IDF rankings merged with reciprocal rank fusion.
+                  {% elif radio.data.value == "http" %}Your own retriever (hybrid, dense, reranked …) behind an HTTP endpoint. Each query is POSTed to it.
+                  {% elif radio.data.value == "precomputed" %}Rankings you exported from your retriever, as a JSON or CSV file.{% endif %}
+                </small></span>
+            </label>
+          {% endfor %}
+        </fieldset>
+        {% for error in form.retriever_type.errors %}<span class="field__error">{{ error }}</span>{% endfor %}
+        <div id="no-corpus-warning" class="message message--warning" data-datasets="{{ datasets_without_chunks }}" hidden>
+          <span class="message__icon" aria-hidden="true"></span><span>This dataset has no chunk corpus, so the built-in retrievers have nothing to search. Use the HTTP endpoint or an uploaded results file.</span>
+        </div>
+
+        <div class="fields fields--3" data-retriever-panel="bm25 fusion">
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.k1 %}
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.b %}
+          <div data-retriever-panel="fusion">{% include "retrieval_evaluation/partials/_field.html" with field=form.rrf_k %}</div>
+        </div>
+        <div data-retriever-panel="bm25 tfidf fusion">
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.stemming %}
+        </div>
+
+        <div class="stack-sm" data-retriever-panel="http">
+          <div class="fields">
+            {% include "retrieval_evaluation/partials/_field.html" with field=form.http_url %}
+            {% include "retrieval_evaluation/partials/_field.html" with field=form.http_timeout %}
+          </div>
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.http_authorization %}
+          <details class="disclosure">
+            <summary>Request and response format</summary>
+            <div class="stack-sm" style="margin-top:12px">
+<pre class="code">POST {"query": "What is the maternity leave policy?",
+      "query_id": "Q1", "top_k": 5}
+
+200  {"results": [{"chunk_id": "C104", "score": 0.91},
+                  {"chunk_id": "C101", "score": 0.88}]}</pre>
+              <p class="small muted">A plain list such as ["C104", "C101"] also works. Keys "chunks", "documents" or "retrieved" and "id" or "doc_id" are accepted.</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="stack-sm" data-retriever-panel="precomputed">
+          {% include "retrieval_evaluation/partials/_field.html" with field=form.results_file %}
+          <details class="disclosure">
+            <summary>Results file format</summary>
+            <div class="stack-sm" style="margin-top:12px">
+<pre class="code">{"results": {
+  "Q1": ["C104", "C101", "C105", "C102", "C106"],
+  "Q2": [{"chunk_id": "C108", "score": 12.4}, ...]
+}}</pre>
+<pre class="code">query_id,chunk_id,rank,score
+Q1,C104,1,0.91
+Q1,C101,2,0.88</pre>
+              <p class="small muted">The sample file <span class="mono">retrieval_evaluation/sample_data/worked_example_results.json</span> reproduces the worked example on the "HR Worked Example" dataset.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="form-section">
+        {% include "retrieval_evaluation/partials/_field.html" with field=form.notes %}
+        <div class="form-actions"><button class="btn btn--primary" type="submit">Run evaluation</button>
+          <span class="small muted">Runs right away; a few hundred queries take seconds with the built-in retrievers.</span></div>
+      </div>
+    </div>
+  </form>
+
+  <aside class="card" aria-labelledby="metrics-help">
+    <div class="card__head"><h2 id="metrics-help">What gets measured</h2></div>
+    <div class="card__body">
+      <dl class="kv">
+        <dt>Precision@K</dt><dd>Relevant in top K / K</dd>
+        <dt>Recall@K</dt><dd>Relevant in top K / all relevant</dd>
+        <dt>F1</dt><dd>Harmonic mean of precision and recall</dd>
+        <dt>Hit Rate@K</dt><dd>1 if any relevant chunk is in the top K</dd>
+        <dt>MRR</dt><dd>1 / rank of the first relevant chunk</dd>
+        <dt>NDCG@K</dt><dd>DCG / ideal DCG, using grades 0-3</dd>
+      </dl>
+      <p class="small muted" style="margin-top:16px">Precision, Recall, F1 and Hit Rate count grade 1 or higher as relevant. NDCG uses the grades themselves (gain 2<sup>grade</sup> − 1 by default).</p>
+    </div>
+  </aside>
+</div>
+{% endif %}
+{% endblock %}

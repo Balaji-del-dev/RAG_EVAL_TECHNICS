@@ -1,0 +1,49 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Retrieval Evaluation{% endblock %} · Retrieval Evaluation</title>
+  <link rel="stylesheet" href="{% static 'retrieval_evaluation/css/app.css' %}">
+  <script src="{% static 'retrieval_evaluation/js/app.js' %}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% with name=request.resolver_match.url_name %}
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="{% url 'retrieval_evaluation:dashboard' %}">
+        <span class="brand__mark" aria-hidden="true"></span>
+        <span>Retrieval Evaluation</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="{% url 'retrieval_evaluation:dashboard' %}" {% if name == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+        <a href="{% url 'retrieval_evaluation:dataset_list' %}" {% if name in 'dataset_list dataset_detail query_detail' %}aria-current="page"{% endif %}>Datasets</a>
+        <a href="{% url 'retrieval_evaluation:run_list' %}" {% if name in 'run_list run_detail result_detail' %}aria-current="page"{% endif %}>Runs</a>
+        <a href="{% url 'retrieval_evaluation:comparison' %}" {% if name == 'comparison' %}aria-current="page"{% endif %}>Compare</a>
+      </nav>
+      <a class="btn btn--primary btn--sm" href="{% url 'retrieval_evaluation:evaluation_create' %}">New evaluation</a>
+    </div>
+  </header>
+  {% endwith %}
+
+  <main id="main" class="page">
+    {% if messages %}
+      <div class="messages" role="status">
+        {% for message in messages %}
+          <div class="message message--{{ message.tags|default:'info' }}">
+            <span class="message__icon" aria-hidden="true"></span>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    Retrieval-only evaluation · six metrics implemented in Python · no Ragas or DeepEval
+  </footer>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+</body>
+</html>
